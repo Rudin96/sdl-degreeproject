@@ -1,4 +1,4 @@
-use std::{net::{UdpSocket, SocketAddr, Ipv4Addr, IpAddr}, thread};
+use std::{net::{UdpSocket, Ipv4Addr}, thread};
 
 pub enum ServerType {
     LOCAL,
@@ -8,13 +8,16 @@ pub enum ServerType {
 
 pub fn createlan() {
     println!("Create Lan server at *LAN IP HERE*");
-    create("127.0.0.1:1337").expect("server didn't create, WTF!?");
+    create().expect("server didn't create, WTF!?");
 }
 
-fn create(ip_address: &str) -> std::io::Result<()> {
+fn create() -> std::io::Result<()> {
     {
-        let handle = thread::spawn(|| {
-            let socket = UdpSocket::bind("127.0.0.1:1337").expect("couldn't bind to address");
+        thread::spawn(|| {
+            let mut ip_addr = Ipv4Addr::UNSPECIFIED.to_string();
+            ip_addr.push_str(":1337");
+            println!("Socket address: {ip_addr}");
+            let socket = UdpSocket::bind(ip_addr).expect("couldn't bind to address");
             let mut buf = [0; 1024];
             loop {
                 let (number_of_bytes, src_addr) = socket.recv_from(&mut buf).expect("Didn't receive data");
@@ -31,7 +34,7 @@ fn create(ip_address: &str) -> std::io::Result<()> {
 
 pub fn createwan() {
     println!("Created server at *LAN IP HERE*");
-    create("127.0.0.1:1337").expect("server didn't create, WTF!?");
+    create().expect("server didn't create, WTF!?");
 }
 
 pub fn createoffline() {

@@ -2,7 +2,6 @@ use std::env;
 
 use sdl_degreeproject::networking::client;
 use sdl_degreeproject::networking::server;
-use sdl_degreeproject::networking::manager;
 
 fn find_sdl_gl_driver() -> Option<u32> {
     for (index, item) in sdl2::render::drivers().enumerate() {

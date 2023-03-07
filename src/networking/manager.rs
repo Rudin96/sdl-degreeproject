@@ -1,5 +1,3 @@
-use std::net::UdpSocket;
-
 use super::server;
 
 pub fn startserver(mode: server::ServerType) {
@@ -8,7 +6,4 @@ pub fn startserver(mode: server::ServerType) {
         server::ServerType::WAN => server::createwan(),
         server::ServerType::OFFLINE => server::createoffline(),
     }
-}
-
-pub fn senddata<T>(data: T) {
 }
