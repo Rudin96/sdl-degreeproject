@@ -1,3 +1,11 @@
+mod render;
+mod input;
+
+use render::render;
+//use render::load_font;
+
+
+
 use std::collections::HashSet;
 use std::env;
 use std::path::Path;
@@ -10,65 +18,16 @@ use sdl2::render::{WindowCanvas, Texture, TextureQuery};
 use sdl2::sys::{SDL_CommonEvent, SDL_Keycode, Window, ttf};
 use sdl2::image::{self,LoadTexture,InitFlag};
 
-macro_rules! rect(
-    ($x:expr, $y:expr, $w:expr, $h:expr) => (
-        Rect::new($x as i32, $y as i32, $w as u32, $h as u32)
-    )
-);
-
 #[derive(Debug)]
-struct Player
+pub struct Player
 {
     position: Point,
     sprite: Rect,
     speed: i32
 }
 
-
-fn get_centered_rect(rect_width: u32, rect_height: u32, cons_width: u32, cons_height: u32) -> Rect {
-    let wr = rect_width as f32 / cons_width as f32;
-    let hr = rect_height as f32 / cons_height as f32;
-
-    let (w, h) = if wr > 1f32 || hr > 1f32 {
-        if wr > hr {
-            println!("Scaling down! The text will look worse!");
-            let h = (rect_height as f32 / wr) as i32;
-            (cons_width as i32, h)
-        } else {
-            println!("Scaling down! The text will look worse!");
-            let w = (rect_width as f32 / hr) as i32;
-            (w, cons_height as i32)
-        }
-    } else {
-        (rect_width as i32, rect_height as i32)
-    };
-
-    let cx = (600 as i32 - w) / 2;
-    let cy = (800 as i32 - h) / 2;
-    rect!(cx, cy, w, h)
-}
-
-
-fn render(canvas: &mut WindowCanvas, color: Color, texture: &Texture,player: &Player) -> Result<(), String>{ 
-
-    canvas.set_draw_color(color);
-    canvas.clear();
-    
-    let (width, height) = canvas.output_size()?;
-
-    let screen_position = player.position + Point::new(width as i32/2, height as i32 / 2);
-    let screen_rect = Rect::from_center(screen_position, player.sprite.width(), player.sprite.height());
-
-    canvas.copy(texture, player.sprite, screen_rect);
-
-   
-
-    canvas.present();
-
-    Ok(())
-
-}
-
+static SCREEN_WIDTH: u32 = 800;
+static SCREEN_HEIGHT: u32 = 600;
 
 // fn find_sdl_gl_driver() -> Option<u32> {
 //     for (index, item) in sdl2::render::drivers().enumerate() {
@@ -82,7 +41,7 @@ fn render(canvas: &mut WindowCanvas, color: Color, texture: &Texture,player: &Pl
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
-    let _image_context = image::init(InitFlag::PNG | InitFlag::PNG)?;
+    let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).expect("askldj");
 
     let window = video_subsystem.window("My new SDL Window", 800, 600)
         .position_centered()
@@ -91,21 +50,9 @@ fn main() -> Result<(), String> {
     let mut canvas = window.into_canvas().build().unwrap();
 
 
+
     let texture_creator = canvas.texture_creator();
     let texture = texture_creator.load_texture("face.png")?;
-
-    let mut path = Path::new(env!("CARGO_MANIFEST_DIR")).to_owned();
-    path.push("fontaa.ttf");
-
-    let ttf_context = sdl2::ttf::init().unwrap();
-    let mut font = ttf_context.load_font(path,128)?;
-
-    font.set_style(sdl2::ttf::FontStyle::BOLD);
-
-    let text_surface = font.render("hello RSOAT").blended(Color::RGBA(255,0,0,255)).unwrap();
-    let text_texture = texture_creator.create_texture_from_surface(&text_surface).unwrap();
-
-
 
     let mut player = Player { 
         position: Point::new(0, 0), 
@@ -113,23 +60,26 @@ fn main() -> Result<(), String> {
         speed: 5 
     };
 
-    
-
     canvas.set_draw_color(Color::RGB(0, 255, 255));
     canvas.clear();
     canvas.present();
 
+    let mut path = Path::new(env!("CARGO_MANIFEST_DIR")).to_owned();
+    path.push("fontaa.ttf");
 
-    let TextureQuery {width,height,..} = text_texture.query();
+    let ttf_context = sdl2::ttf::init().unwrap();
+    let mut font = ttf_context.load_font(path,32).unwrap();
 
-    let target = get_centered_rect(
-        width,
-        height,
-        600 - 64,
-        800 - 64,
-    );
+    font.set_style(sdl2::ttf::FontStyle::BOLD);
+
+    let texture_creator = canvas.texture_creator();
     
+    //let font_texture = load_font(&mut &canvas, &texture);
     
+
+    let text_surface = font.render("Player{}").blended(Color::RGBA(255,0,0,255)).unwrap();
+    let text_texture = texture_creator.create_texture_from_surface(&text_surface).unwrap();
+   
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut left_is_held_down = false;
@@ -144,7 +94,6 @@ fn main() -> Result<(), String> {
 
     'running: loop {
 
-        
 
 
         i = (i + 1) % 255;
@@ -183,11 +132,20 @@ fn main() -> Result<(), String> {
             player.position = player.position.offset(0, player.speed);
         }
 
+
+        let (canvas_width, canvas_height) = canvas.output_size()?;
+
+        let screen_position = player.position + Point::new(canvas_width as i32/2, (canvas_height as i32 / 2) - 32) ;
+        let screen_rect = Rect::from_center(screen_position, text_texture.query().width, text_texture.query().height);
+
         render(&mut canvas, Color::RGB(i, 64, 255 - i), &texture,&player);
+
+
+
 
         canvas.present();
 
-        canvas.copy(&text_texture, None, Some(target)).unwrap();
+        canvas.copy(&text_texture, None, screen_rect);
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
 
