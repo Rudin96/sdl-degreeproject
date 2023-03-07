@@ -11,11 +11,4 @@ pub fn startserver(mode: server::ServerType) {
 }
 
 pub fn senddata<T>(data: T) {
-    let socket = UdpSocket::bind(server::IP_ADDRESS).expect("Couldnt bind to ip address");
-
-    let message = "Test message!";
-
-    
-
-    socket.send_to(message.as_bytes(), server::IP_ADDRESS).expect("Couldnt send message to server, please investigate!");
 }
