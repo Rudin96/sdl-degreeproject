@@ -1,4 +1,9 @@
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
 use std::env;
+use std::ops::Deref;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use sdl_degreeproject::networking::client;
 use sdl_degreeproject::networking::server;
@@ -16,12 +21,19 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let serverarg = String::from("server");
     let sdlarg = String::from("showsdl");
-    
+
+    let sharedBuffer = Arc::new(Mutex::new([0; 1024]));
+
     if args.contains(&serverarg){
         server::createlan();
-        client::connect("127.0.0.1").expect("Couldnt connect to server!");
+        let bufferclone = sharedBuffer.clone();
+        client::connect("127.0.0.1", move |received_bytes| {
+            let mut x = bufferclone.lock().unwrap();
+            x.copy_from_slice(received_bytes);
+            
+        }).expect("Couldnt connect to server!");
     }else {
-        client::connect("192.168.1.18").expect("Couldnt connect to server!");
+        client::connect("192.168.1.18", |_| println!("Callback lambda")).expect("Couldnt connect to server!");
     }
     // manager::senddata("Test message");
     
@@ -40,6 +52,7 @@ fn main() {
 
         loop {
             _canvas.present();
+
         }
     }
 

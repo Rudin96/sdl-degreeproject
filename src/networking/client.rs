@@ -2,7 +2,7 @@ use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr}, thread};
 
 const PORT_NUMBER: &str = ":1337";
 
-pub fn connect(ipaddress: &str) -> std::io::Result<()> {
+pub fn connect<Func: Fn(&[u8]) + Send + 'static>(ipaddress: &str, function: Func) -> std::io::Result<()> {
     let mut ip = ipaddress.to_owned();
     ip.push_str(PORT_NUMBER);
     println!("IP is: {ip}");
@@ -27,7 +27,7 @@ pub fn connect(ipaddress: &str) -> std::io::Result<()> {
                 let mut buf = [0; 1024];
 
                 let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Client recieve error");
-
+                function(&buf);
                 let filled_buffer = &buf[..number_of_bytes];
 
                 println!("Client: Received {} from {}", String::from_utf8_lossy(filled_buffer), from);

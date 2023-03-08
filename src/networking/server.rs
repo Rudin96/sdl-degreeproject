@@ -20,7 +20,6 @@ fn create(servertype: &ServerType) -> std::io::Result<()> {
                 let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Error receiving data");
                 
                 connectedclients.insert(from, "a client");
-
                 let filled_buffer = &mut buf[..number_of_bytes];
                 let decoded_buffer = String::from_utf8_lossy(filled_buffer);
                 println!("Server: receiving data: {} from IP: {}", decoded_buffer, from);
@@ -34,7 +33,7 @@ fn create(servertype: &ServerType) -> std::io::Result<()> {
 
 pub fn createwan() {
     println!("Created server at *LAN IP HERE*");
-    create(&ServerType::WAN).expect("server didn't create, WTF!?");
+    // create(&ServerType::WAN).expect("server didn't create, WTF!?");
 }
 
 pub fn createoffline() {
