@@ -17,11 +17,12 @@ fn main() {
     let serverarg = String::from("server");
     let sdlarg = String::from("showsdl");
     
-    
     if args.contains(&serverarg){
         server::createlan();
+        client::connect("127.0.0.1").expect("Couldnt connect to server!");
+    }else {
+        client::connect("192.168.1.18").expect("Couldnt connect to server!");
     }
-    client::connect().expect("Couldnt connect to server!");
     // manager::senddata("Test message");
     
     if args.contains(&sdlarg)
@@ -40,6 +41,10 @@ fn main() {
         loop {
             _canvas.present();
         }
+    }
+
+    loop {
+        
     }
     
 }

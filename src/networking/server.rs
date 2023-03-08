@@ -1,4 +1,4 @@
-use std::{net::{UdpSocket, Ipv4Addr}, thread};
+use std::{net::{UdpSocket, Ipv4Addr, SocketAddr, SocketAddrV4}, thread, collections::HashMap};
 
 pub enum ServerType {
     LOCAL,
@@ -7,34 +7,34 @@ pub enum ServerType {
 }
 
 pub fn createlan() {
-    println!("Create Lan server at *LAN IP HERE*");
-    create().expect("server didn't create, WTF!?");
+    println!("Creating lan server..");
+    create(&ServerType::LOCAL).expect("server didn't create, WTF!?");
 }
 
-fn create() -> std::io::Result<()> {
-    {
-        thread::spawn(|| {
-            let mut ip_addr = Ipv4Addr::UNSPECIFIED.to_string();
-            ip_addr.push_str(":1337");
-            println!("Socket address: {ip_addr}");
-            let socket = UdpSocket::bind(ip_addr).expect("couldn't bind to address");
-            let mut buf = [0; 1024];
+fn create(servertype: &ServerType) -> std::io::Result<()> {
+    let mut connectedclients = HashMap::new();
+        thread::spawn(move || -> &str {
+            let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 1337))).expect("Couldnt bind socket");
             loop {
-                let (number_of_bytes, src_addr) = socket.recv_from(&mut buf).expect("Didn't receive data");
-                let filled_buf = &mut buf[..number_of_bytes];
-                let decodedmessage = String::from_utf8(filled_buf.to_vec()).expect("Couldnt convert message!");
-                println!("Received message from client with addr: {} that says: {}", src_addr, decodedmessage);
+                let mut buf = [0; 1024];
+                let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Error receiving data");
+                
+                connectedclients.insert(from, "a client");
+
+                let filled_buffer = &mut buf[..number_of_bytes];
+                let decoded_buffer = String::from_utf8_lossy(filled_buffer);
+                println!("Server: receiving data: {} from IP: {}", decoded_buffer, from);
+                println!("Server: Sending {} back to client", decoded_buffer);
+                socket.send_to(&filled_buffer, from).expect("Couldnt send back to sender");
             }
         });
-
         // handle.join().unwrap();
-    }
     Ok(())
 }
 
 pub fn createwan() {
     println!("Created server at *LAN IP HERE*");
-    create().expect("server didn't create, WTF!?");
+    create(&ServerType::WAN).expect("server didn't create, WTF!?");
 }
 
 pub fn createoffline() {
