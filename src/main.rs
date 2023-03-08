@@ -1,7 +1,4 @@
-use std::borrow::BorrowMut;
-use std::cell::RefCell;
 use std::env;
-use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -20,17 +17,17 @@ fn find_sdl_gl_driver() -> Option<u32> {
 fn main() {
     let args: Vec<String> = env::args().collect();
     let serverarg = String::from("server");
-    let sdlarg = String::from("showsdl");
+    let sdlarg = String::from("window");
 
-    let sharedBuffer = Arc::new(Mutex::new([0; 1024]));
+    let sharedbuffer = Arc::new(Mutex::new([0; 1024]));
 
     if args.contains(&serverarg){
         server::createlan();
-        let bufferclone = sharedBuffer.clone();
+        let bufferclone = sharedbuffer.clone();
         client::connect("127.0.0.1", move |received_bytes| {
             let mut x = bufferclone.lock().unwrap();
             x.copy_from_slice(received_bytes);
-            
+
         }).expect("Couldnt connect to server!");
     }else {
         client::connect("192.168.1.18", |_| println!("Callback lambda")).expect("Couldnt connect to server!");
