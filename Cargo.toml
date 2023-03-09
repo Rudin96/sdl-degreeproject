@@ -15,3 +15,8 @@ features = [
     "fast-rng",          # Use a faster (but still sufficiently random) RNG
     "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
 ]
+
+[dependencies.sdl2]
+version = "0.35"
+default-features = false
+features = ["image","ttf"]
