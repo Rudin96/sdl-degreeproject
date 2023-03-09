@@ -18,19 +18,36 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let serverarg = String::from("server");
     let sdlarg = String::from("window");
-
+    let noclientarg = String::from("noclient");
+    
     let sharedbuffer = Arc::new(Mutex::new([0; 1024]));
-
+    
     if args.contains(&serverarg){
         server::createlan();
         let bufferclone = sharedbuffer.clone();
-        client::connect("127.0.0.1", move |received_bytes| {
+        if !args.contains(&noclientarg)
+        {
+            client::connect("127.0.0.1", move |received_bytes| {
+                let mut x = bufferclone.lock().unwrap();
+                x.copy_from_slice(received_bytes);
+                // println!("Received on main thread: {}", String::from_utf8_lossy(x.as_slice()));
+            }).expect("Couldnt connect to server!");
+        }
+        loop {
+            
+        }
+    }else {
+        let bufferclone = sharedbuffer.clone();
+        client::connect("10.24.1.182", move |received_bytes| {
             let mut x = bufferclone.lock().unwrap();
             x.copy_from_slice(received_bytes);
-
+            // println!("Received on main thread: {}", String::from_utf8_lossy(x.as_slice()));
         }).expect("Couldnt connect to server!");
-    }else {
-        client::connect("192.168.1.18", |_| println!("Callback lambda")).expect("Couldnt connect to server!");
+        loop {
+            let recbuffer = sharedbuffer.clone();
+            let recbuffer2 = recbuffer.lock().unwrap();
+            println!("main thread netinfo is: {}", String::from_utf8_lossy(recbuffer2.as_slice()));
+        }
     }
     // manager::senddata("Test message");
     
@@ -49,12 +66,13 @@ fn main() {
 
         loop {
             _canvas.present();
-
         }
     }
-
-    loop {
-        
-    }
+    
+    // loop {
+    //     let recbuffer = sharedbuffer.clone();
+    //     let recbuffer2 = recbuffer.lock().unwrap();
+    //     println!("main thread netinfo is: {}", String::from_utf8_lossy(recbuffer2.as_slice()));
+    // }
     
 }
