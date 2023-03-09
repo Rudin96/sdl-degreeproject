@@ -84,7 +84,6 @@ fn main() -> Result<(), String> {
 
     const GRID_WIDTH: u32 = SCREEN_WIDTH / 10;
     const GRID_HEIGHT: u32 = SCREEN_HEIGHT / 10;
-
     const ARR_SIZE: u32 = GRID_HEIGHT * GRID_WIDTH;
 
     let mut _grid: [Rect;ARR_SIZE as usize] = [Rect::new(1, 1, 1, 1); ARR_SIZE as usize];
@@ -164,29 +163,26 @@ fn main() -> Result<(), String> {
 
         canvas.clear();
 
-        // for _rect in _grid.iter() {
+        for _rect in _grid.iter() {
 
-        //     let _x = event_pump.mouse_state().x();
-        //     let _y = event_pump.mouse_state().y();
+            let _x = event_pump.mouse_state().x();
+            let _y = event_pump.mouse_state().y();
 
-        //     if _x < (_rect.x + _rect.width() as i32) &&
-        //         _x > _rect.x &&
-        //         _y > _rect.y + _rect.height() as i32 &&
-        //         _y < _rect.y
-            
-        //     {
-                
-        //     };
-
-        //     canvas.set_draw_color(Color::RGB(255, 0, 0));
-        //     canvas.draw_rect(*_rect).unwrap();
-        // }
-
+            if  _x < (_rect.x + _rect.width() as i32) &&
+                _x > _rect.x &&
+                _y < (_rect.y + _rect.height() as i32) &&
+                _y > _rect.y
+            {   
+                canvas.set_draw_color(Color::RGB(0, 255, 0));
+                canvas.fill_rect(*_rect).unwrap();
+            }
+            else  {
+                canvas.set_draw_color(Color::RGB(255, 0, 0));
+                canvas.draw_rect(*_rect).unwrap();
+            }
+        }
 
         render(&mut canvas, Color::RGB(i, 64, 255 - i), &texture,&player).unwrap();
-        
-        
-
         canvas.copy(&text_texture, None, screen_rect).unwrap();
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
