@@ -2,12 +2,11 @@ mod render;
 mod input;
 
 use render::render;
-
-//use render::load_font;
-
+use sdl_degreeproject::networking::{server, client};
 
 use std::env;
 use std::path::Path;
+use std::sync::{Mutex, Arc};
 use std::time::Duration;
 use sdl2::pixels::Color;
 use sdl2::event::{Event};
@@ -37,6 +36,25 @@ const SCREEN_HEIGHT: u32 = 1000;
 // }
 
 fn main() -> Result<(), String> {
+    let args: Vec<String> = env::args().collect();
+    let serverarg = String::from("server");
+
+    let sharedbuffer = Arc::new(Mutex::new([0; 128]));
+
+    if args.contains(&serverarg)
+    {
+        server::createlan();
+        loop {
+            
+        }
+    }
+
+    client::connect("127.0.0.1", move |netbuffer: &[u8]| {
+        let clonedbuf = sharedbuffer.clone();
+        let mut locbuffer = clonedbuf.lock().unwrap();
+        locbuffer.copy_from_slice(netbuffer);
+    }).expect("Couldnt create or connect the netclient");
+
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
     let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).expect("askldj");
@@ -145,13 +163,13 @@ fn main() -> Result<(), String> {
         if left_is_held_down {
             player.position = player.position.offset(-player.speed, 0);
         } 
-        else if right_is_held_down {
+        if right_is_held_down {
             player.position = player.position.offset(player.speed, 0);
         } 
-        else if up_is_held_down {
+        if up_is_held_down {
             player.position = player.position.offset(0, -player.speed);
         }
-        else if down_is_held_down {
+        if down_is_held_down {
             player.position = player.position.offset(0, player.speed);
         }
 

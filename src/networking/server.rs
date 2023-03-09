@@ -9,6 +9,7 @@ pub enum ServerType {
 pub fn createlan() {
     println!("Creating lan server..");
     create(&ServerType::LOCAL).expect("server didn't create, WTF!?");
+    println!("LAN Server created and listening!");
 }
 
 fn create(_servertype: &ServerType) -> std::io::Result<()> {
@@ -16,7 +17,7 @@ fn create(_servertype: &ServerType) -> std::io::Result<()> {
         thread::spawn(move || -> &str {
             let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 1337))).expect("Couldnt bind socket");
             loop {
-                let mut buf = [0; 1024];
+                let mut buf = [0; 128];
                 let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Error receiving data");
                 
                 let _ = &connectedclients.insert(from, "a client");

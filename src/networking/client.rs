@@ -23,7 +23,7 @@ pub fn connect<Func: Fn(&[u8]) + Send + 'static>(ipaddress: &str, function: Func
                 socket.send_to(bytemessage, &ip).expect("Couldnt send message to server");
                 // println!("Client: Sending message to host!");
 
-                let mut buf = [0; 1024];
+                let mut buf = [0; 128];
 
                 let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Client recieve error");
                 function(&buf);
