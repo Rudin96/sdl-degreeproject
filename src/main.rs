@@ -6,7 +6,7 @@ use sdl_degreeproject::networking::{server, client};
 
 use std::env;
 use std::path::Path;
-use std::sync::{Mutex, Arc};
+use std::sync::{Mutex, Arc, MutexGuard};
 use std::time::Duration;
 use sdl2::pixels::Color;
 use sdl2::event::{Event};
@@ -23,8 +23,8 @@ pub struct Player
 }
 
 
-const SCREEN_WIDTH: u32 = 1000;
-const SCREEN_HEIGHT: u32 = 1000;
+const SCREEN_WIDTH: u32 = 800;
+const SCREEN_HEIGHT: u32 = 800;
 
 // fn find_sdl_gl_driver() -> Option<u32> {
 //     for (index, item) in sdl2::render::drivers().enumerate() {
@@ -35,13 +35,19 @@ const SCREEN_HEIGHT: u32 = 1000;
 //     None
 // }
 
+fn printnetworkdata(buffer: MutexGuard<[u8; 128]>) {
+    println!("Received mainthread data: {}", String::from_utf8_lossy(buffer.as_slice()));
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let serverarg = String::from("server");
+    let dedserverarg = String::from("dedserver");
 
     let sharedbuffer = Arc::new(Mutex::new([0; 128]));
+    let netclient = client::init();
 
-    if args.contains(&serverarg)
+    if args.contains(&dedserverarg)
     {
         server::createlan();
         loop {
@@ -49,11 +55,14 @@ fn main() -> Result<(), String> {
         }
     }
 
-    client::connect("127.0.0.1", move |netbuffer: &[u8]| {
-        let clonedbuf = sharedbuffer.clone();
+    // server::createlan();
+
+    let ownedbuf = sharedbuffer.to_owned();
+    netclient.recieve(move|netbuffer: &mut [u8]| {
+        let clonedbuf = ownedbuf.clone();
         let mut locbuffer = clonedbuf.lock().unwrap();
         locbuffer.copy_from_slice(netbuffer);
-    }).expect("Couldnt create or connect the netclient");
+    });
 
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -234,7 +243,11 @@ fn main() -> Result<(), String> {
                 *i=0;
             }
        }
-        
+
+       let sbuffer = sharedbuffer.clone();
+       let bufslice = sbuffer.lock().unwrap();
+       let info = bufslice.as_slice();
+       println!("Main Thread: net recieve {}", String::from_utf8_lossy(info));
     }
 
     Ok(())
