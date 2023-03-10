@@ -2,10 +2,7 @@ mod render;
 mod input;
 
 use render::render;
-
-//use render::load_font;
-
-
+use sdl2::mouse::{MouseButton};
 use std::env;
 use std::path::Path;
 use std::time::Duration;
@@ -23,18 +20,20 @@ pub struct Player
     speed: i32
 }
 
+pub struct Furniture
+{
+    rect: Rect,
+    sprite: Rect,
+}
+
+struct Grid
+{
+    rect: Rect,
+    occupied: bool,
+}
 
 const SCREEN_WIDTH: u32 = 1000;
 const SCREEN_HEIGHT: u32 = 1000;
-
-// fn find_sdl_gl_driver() -> Option<u32> {
-//     for (index, item) in sdl2::render::drivers().enumerate() {
-//         if item.name == "opengl" {
-//             return Some(index as u32);
-//         }
-//     }
-//     None
-// }
 
 fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -46,11 +45,13 @@ fn main() -> Result<(), String> {
         .build()
         .unwrap();
 
-
     let mut canvas = window.into_canvas().build().unwrap();
 
     let texture_creator = canvas.texture_creator();
+
     let texture = texture_creator.load_texture("face.png")?;
+    let catman = texture_creator.load_texture("catman.png")?;
+
 
     let mut player = Player { 
         position: Point::new(0, 0), 
@@ -73,12 +74,13 @@ fn main() -> Result<(), String> {
     let text_surface = font.render("Player{}").blended(Color::RGBA(255,0,0,255)).unwrap();
     let text_texture = texture_creator.create_texture_from_surface(&text_surface).unwrap();
    
-
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut left_is_held_down = false;
     let mut right_is_held_down = false;
     let mut up_is_held_down = false;
     let mut down_is_held_down = false;
+
+    let mut m1_is_down = false;
 
     //const _GRID_SIZE:u32 = (SCREEN_HEIGHT / 10) * (SCREEN_WIDTH / 10);
 
@@ -87,21 +89,30 @@ fn main() -> Result<(), String> {
     const ARR_SIZE: u32 = GRID_HEIGHT * GRID_WIDTH;
 
     let mut _grid: [Rect;ARR_SIZE as usize] = [Rect::new(1, 1, 1, 1); ARR_SIZE as usize];
-
     
     let rows =  GRID_HEIGHT;
     let columns  =  GRID_WIDTH;
 
 
+
+    let mut _new_grid: Vec<Grid> = Vec::new();
+
+
     for i in 0..(rows * columns) {
+        
         let row = i / columns;
         let col = i % columns;
 
-        let rect = Rect::new(100 * row as i32, 100 * col as i32, 100, 100);
+        let tile = Rect::new(100 * row as i32, 100 * col as i32, 100, 100);
         
-        _grid[i as usize] = rect;
-        
-        
+
+        let new_tile = Grid {
+            rect: tile,
+            occupied: false
+        };
+
+        _new_grid.push(new_tile)
+
     }
 
     // Number of frames to average over
@@ -112,6 +123,12 @@ fn main() -> Result<(), String> {
     let mut frame_index = 0;
 
     let mut i = 0;
+
+
+    let mut furniture: Vec<Furniture> = Vec::new();
+
+    let mut tile_rect = Rect::new(0,0,0,0);
+    let mut sprite_rect = Rect::new(0,0,0,0);
 
     'running: loop {
 
@@ -126,6 +143,9 @@ fn main() -> Result<(), String> {
             match event {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {break 'running},
+
+                Event::MouseButtonDown { mouse_btn: MouseButton::Left, .. } => {m1_is_down = true}
+                Event::MouseButtonUp { mouse_btn: MouseButton::Left, .. } => {m1_is_down = false}
 
                 Event::KeyDown { keycode: Some(Keycode::Left), .. } => {left_is_held_down = true;}
                 Event::KeyDown { keycode: Some(Keycode::Right), .. } => {right_is_held_down = true;}
@@ -144,13 +164,13 @@ fn main() -> Result<(), String> {
         if left_is_held_down {
             player.position = player.position.offset(-player.speed, 0);
         } 
-        else if right_is_held_down {
+        if right_is_held_down {
             player.position = player.position.offset(player.speed, 0);
         } 
-        else if up_is_held_down {
+        if up_is_held_down {
             player.position = player.position.offset(0, -player.speed);
         }
-        else if down_is_held_down {
+        if down_is_held_down {
             player.position = player.position.offset(0, player.speed);
         }
 
@@ -163,30 +183,64 @@ fn main() -> Result<(), String> {
 
         canvas.clear();
 
-        for _rect in _grid.iter() {
 
+        for tile in  &mut _new_grid{
             let _x = event_pump.mouse_state().x();
             let _y = event_pump.mouse_state().y();
 
-            if  _x < (_rect.x + _rect.width() as i32) &&
-                _x > _rect.x &&
-                _y < (_rect.y + _rect.height() as i32) &&
-                _y > _rect.y
-            {   
-                canvas.set_draw_color(Color::RGB(0, 255, 0));
-                canvas.fill_rect(*_rect).unwrap();
-            }
-            else  {
+            if  _x < (tile.rect.x + tile.rect.width() as i32) &&
+                _x > tile.rect.x &&
+                _y < (tile.rect.y + tile.rect.height() as i32) &&
+                _y > tile.rect.y
+                {
+                    canvas.set_draw_color(Color::RGB(0, 255, 0));
+                    canvas.draw_rect(tile.rect).unwrap();
+
+                    if m1_is_down && !tile.occupied{
+
+                        canvas.set_draw_color(Color::RGB(0, 255, 0));
+                        canvas.draw_rect(tile.rect).unwrap();
+    
+                        tile_rect = Rect::new(tile.rect.x + (tile.rect.width() / 2) as i32, tile.rect.y + (tile.rect.height() / 2) as i32, tile.rect.width() * 3, tile.rect.height());
+                        sprite_rect = Rect::new(0,0, 384, 128);
+                        
+                        let new_piece = Furniture {
+                            rect: tile_rect,
+                            sprite: sprite_rect
+                        };
+
+                        tile.occupied = true;
+                        
+                        furniture.push(new_piece);
+    
+                        //Get the rect location
+                        //Draw a new rect based on the location
+                        //Make sure its drawn in the middle of the current rect
+                        //postition + width to make sure its properly placed
+                        //Tag current one as occupied?
+
+                    }
+                }
+            else {
                 canvas.set_draw_color(Color::RGB(255, 0, 0));
-                canvas.draw_rect(*_rect).unwrap();
+                canvas.draw_rect(tile.rect).unwrap();
             }
         }
 
+        canvas.set_draw_color(Color::RGB(0, 255, 0));
+
+
+        for piece in &furniture {
+
+            canvas.copy(&catman,piece.sprite,piece.rect).unwrap();
+            //canvas.fill_rect(piece.rect).unwrap();
+        }
+
+        canvas.set_draw_color(Color::RGB(255, 0, 0));
         render(&mut canvas, Color::RGB(i, 64, 255 - i), &texture,&player).unwrap();
         canvas.copy(&text_texture, None, screen_rect).unwrap();
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
-
 
         // Get time after rendering frame
         let end_time = unsafe { sdl2::sys::SDL_GetTicks() };
