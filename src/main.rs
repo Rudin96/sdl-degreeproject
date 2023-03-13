@@ -22,21 +22,11 @@ pub struct Player
     speed: i32
 }
 
-
 const SCREEN_WIDTH: u32 = 800;
 const SCREEN_HEIGHT: u32 = 800;
 
-// fn find_sdl_gl_driver() -> Option<u32> {
-//     for (index, item) in sdl2::render::drivers().enumerate() {
-//         if item.name == "opengl" {
-//             return Some(index as u32);
-//         }
-//     }
-//     None
-// }
-
-fn printnetworkdata(buffer: MutexGuard<[u8; 128]>) {
-    println!("Received mainthread data: {}", String::from_utf8_lossy(buffer.as_slice()));
+fn printnetworkdata(buffer: &[u8]) {
+    println!("Received mainthread data: {}", String::from_utf8_lossy(buffer));
 }
 
 fn main() -> Result<(), String> {
@@ -44,7 +34,7 @@ fn main() -> Result<(), String> {
     let serverarg = String::from("server");
     let dedserverarg = String::from("dedserver");
 
-    let sharedbuffer = Arc::new(Mutex::new([0; 128]));
+    let sharedbuffer = Arc::new(Mutex::new([0; 4]));
     let netclient = client::init();
 
     if args.contains(&dedserverarg)
@@ -63,6 +53,8 @@ fn main() -> Result<(), String> {
         let mut locbuffer = clonedbuf.lock().unwrap();
         locbuffer.copy_from_slice(netbuffer);
     });
+
+    netclient.connect(String::from("127.0.0.1"));
 
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -141,13 +133,14 @@ fn main() -> Result<(), String> {
 
     let mut i = 0;
 
+    let mut prevplayerpos = player.position;
+
     'running: loop {
 
         let start_time = unsafe { sdl2::sys::SDL_GetTicks() };
 
-
         i = (i + 1) % 255;
-        canvas.set_draw_color(Color::RGB(i, 64, 255-i));
+        // canvas.set_draw_color(Color::RGB(i, 64, 255-i));
         
 
         for event in event_pump.poll_iter() {
@@ -182,6 +175,10 @@ fn main() -> Result<(), String> {
             player.position = player.position.offset(0, player.speed);
         }
 
+        if player.position != prevplayerpos {
+            // netclient.send(&player.position);
+            prevplayerpos = player.position;
+        }
 
         let (canvas_width, canvas_height) = canvas.output_size()?;
 
@@ -210,7 +207,7 @@ fn main() -> Result<(), String> {
         // }
 
 
-        render(&mut canvas, Color::RGB(i, 64, 255 - i), &texture,&player).unwrap();
+        render(&mut canvas, Color::RGB(30, 30, 30), &texture,&player).unwrap();
         
         
 
@@ -247,7 +244,7 @@ fn main() -> Result<(), String> {
        let sbuffer = sharedbuffer.clone();
        let bufslice = sbuffer.lock().unwrap();
        let info = bufslice.as_slice();
-       println!("Main Thread: net recieve {}", String::from_utf8_lossy(info));
+    //    println!("Main Thread: net recieve {}", String::from_utf8_lossy(info));
     }
 
     Ok(())
