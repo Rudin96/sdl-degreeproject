@@ -2,11 +2,12 @@ mod render;
 mod input;
 
 use render::render;
+use sdl_degreeproject::constvalues;
 use sdl_degreeproject::networking::{server, client};
 
 use std::env;
 use std::path::Path;
-use std::sync::{Mutex, Arc, MutexGuard};
+use std::sync::{Mutex, Arc};
 use std::time::Duration;
 use sdl2::pixels::Color;
 use sdl2::event::{Event};
@@ -25,16 +26,16 @@ pub struct Player
 const SCREEN_WIDTH: u32 = 800;
 const SCREEN_HEIGHT: u32 = 800;
 
-fn printnetworkdata(buffer: &[u8]) {
-    println!("Received mainthread data: {}", String::from_utf8_lossy(buffer));
-}
+// fn printnetworkdata(buffer: &[u8]) {
+//     println!("Received mainthread data: {}", String::from_utf8_lossy(buffer));
+// }
 
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
-    let serverarg = String::from("server");
+    let _serverarg = String::from("server");
     let dedserverarg = String::from("dedserver");
 
-    let sharedbuffer = Arc::new(Mutex::new([0; 4]));
+    let sharedbuffer = Arc::new(Mutex::new([0; constvalues::MAX_PLAYERS * 2 + 1]));
     let netclient = client::init();
 
     if args.contains(&dedserverarg)
@@ -48,13 +49,14 @@ fn main() -> Result<(), String> {
     // server::createlan();
 
     let ownedbuf = sharedbuffer.to_owned();
+    netclient.connect(String::from("127.0.0.1"));
     netclient.recieve(move|netbuffer: &mut [u8]| {
         let clonedbuf = ownedbuf.clone();
         let mut locbuffer = clonedbuf.lock().unwrap();
         locbuffer.copy_from_slice(netbuffer);
     });
 
-    netclient.connect(String::from("127.0.0.1"));
+    println!("Connected to localhost");
 
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -76,6 +78,8 @@ fn main() -> Result<(), String> {
         sprite: Rect::new(0,0,32,32), 
         speed: 5 
     };
+
+    let mut players: Vec<Player> = Vec::new();
 
     canvas.set_draw_color(Color::RGB(0, 255, 255));
 
@@ -207,10 +211,26 @@ fn main() -> Result<(), String> {
         // }
 
 
-        render(&mut canvas, Color::RGB(30, 30, 30), &texture,&player).unwrap();
+        let sbuffer = sharedbuffer.clone();
+        let bufslice = sbuffer.lock().unwrap();
+        let _info = bufslice.as_slice();
+        if _info[0] == 17 {
+            let pcount = (_info.len() - 1) / 2;
+            while players.len() < pcount {
+                players.push(Player {
+                    position: Point::new(1, 1), 
+                    sprite: Rect::new(0,0,32,32), 
+                    speed: 5 
+                })
+            }
+            for i in 0..pcount {
+                println!("Render player {} with position", i);
+            }
+        }
         
         
-
+        
+        render(&mut canvas, Color::RGB(30, 30, 30), &texture,&players[i]).unwrap();
         canvas.copy(&text_texture, None, screen_rect).unwrap();
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
@@ -240,11 +260,6 @@ fn main() -> Result<(), String> {
                 *i=0;
             }
        }
-
-       let sbuffer = sharedbuffer.clone();
-       let bufslice = sbuffer.lock().unwrap();
-       let info = bufslice.as_slice();
-    //    println!("Main Thread: net recieve {}", String::from_utf8_lossy(info));
     }
 
     Ok(())
