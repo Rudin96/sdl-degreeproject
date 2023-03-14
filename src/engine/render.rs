@@ -1,12 +1,12 @@
-use sdl2::{render::{WindowCanvas, Texture}, pixels::Color, rect::{Point, Rect}};
+use sdl2::{render::{WindowCanvas, Texture}, pixels::Color, rect::{Point, Rect}, ttf::Font};
 
 use crate::engine::player_module::Player;
 
 
 
 
-
-pub fn render_player(canvas: &mut WindowCanvas, color: Color,player: &Player) -> Result<(), String>{ 
+//TODO:Break down into draw text and draw player.
+pub fn render_player(canvas: &mut WindowCanvas, color: Color,player: &Player,font: &Font) -> Result<(), String>{ 
 
     canvas.set_draw_color(color);
 
@@ -17,17 +17,13 @@ pub fn render_player(canvas: &mut WindowCanvas, color: Color,player: &Player) ->
 
     canvas.copy(&player.player_texture, player.sprite, screen_rect).unwrap();
 
-    match player.text_texture {
-        Some(ref texture) => {
-            // Pass the texture reference to the function
-            render_text(canvas, color, &texture, player).unwrap();
-        }
-        None => {
-            // Handle the case where text_texture is None
-        }
-    }
-
     
+    let player_text = "Player ".to_owned() + &player.player_id.to_string();
+    let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
+    let binding = canvas.texture_creator();
+    let text_texture = binding.create_texture_from_surface(&text_surface).unwrap();
+
+    render_text(canvas, color, &text_texture, player).unwrap();    
 
     Ok(())
 }

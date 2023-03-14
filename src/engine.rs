@@ -5,13 +5,10 @@ mod objects;
 use player::player_module;
 use self::objects::object_module::Objects;
 use self::player::player_module::Player;
-use self::render::render_text;
 use render::render_player;
 use objects::object_module::place_furniture;
 
 use sdl2::mouse::{MouseButton};
-use sdl2::render::{TextureCreator, Texture};
-use sdl2::video::WindowContext;
 use std::{env, vec};
 use std::path::Path;
 use std::time::Duration;
@@ -73,40 +70,23 @@ pub(crate) fn run() -> Result<(), String> {
         text_texture: None    
     };
 
-    //let mut player_vec: Vec<Player> = vec![];
+    //let mut players_positions: HashMap<u8,Point> = HashMap::new();
 
-    
-
-
-
-    //player.player_texture = Some(texture);
-
+    //players_positions.insert(0, player.position);
 
     let mut player_input = player_module::PlayerInput::default();
 
     canvas.set_draw_color(Color::RGB(0, 255, 255));
 
-    
-
-
-
     //Text and Text Surface
 
-    // for i in player_vec {
-    //     let player_text = "Player ".to_owned() + &player.player_id.to_string();
-    //     let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
-    //     let binding = canvas.texture_creator();
-    //     let text_texture = binding.create_texture_from_surface(&text_surface).unwrap();
+    // let player_text = "Player ".to_owned() + &player.player_id.to_string();
+    // let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
+    // let text_texture = canvas.texture_creator().create_texture_from_surface(&text_surface).unwrap();
 
-    //     player.player_texture = text_texture;
-    // }
+    // player.player_texture = text_texture;
+     
 
-
-    
-    
-    
-    
-    
     let mut event_pump = sdl_context.event_pump().unwrap();
     
     let rows =  GRID_HEIGHT;
@@ -114,7 +94,6 @@ pub(crate) fn run() -> Result<(), String> {
 
     let mut tile_rect = Rect::new(0,0,0,0);
     let mut sprite_rect = Rect::new(0,0,0,0);
-
 
     let mut _new_grid: Vec<Tile> = vec![];
     create_grid(&rows, &columns, &mut _new_grid);
@@ -135,7 +114,6 @@ pub(crate) fn run() -> Result<(), String> {
 
         let start_time = unsafe { sdl2::sys::SDL_GetTicks() };
 
-
         i = (i + 1) % 255;
         canvas.set_draw_color(Color::RGB(i, 64, 255-i));
         
@@ -155,6 +133,8 @@ pub(crate) fn run() -> Result<(), String> {
                 Event::KeyDown { keycode: Some(Keycode::Right), .. } => {player_input.right_is_held_down = true;}
                 Event::KeyDown { keycode: Some(Keycode::Up), .. } => {player_input.up_is_held_down = true;}
                 Event::KeyDown { keycode: Some(Keycode::Down), .. } => {player_input.down_is_held_down = true;}
+                
+                Event::KeyDown { keycode: Some(Keycode::Tab), .. } => {player_input.tab = !player_input.tab;}
 
                 Event::KeyUp { keycode: Some(Keycode::Left), .. } => { player_input.left_is_held_down = false;}
                 Event::KeyUp { keycode: Some(Keycode::Right), .. } => { player_input.right_is_held_down = false;}
@@ -182,7 +162,10 @@ pub(crate) fn run() -> Result<(), String> {
         canvas.clear();
 
 
-        check_tile(&mut _new_grid, &event_pump, &mut canvas, &player_input, &mut sprite_rect, &mut tile_rect);
+        if player_input.tab {
+            
+            check_tile(&mut _new_grid, &event_pump, &mut canvas, &player_input, &mut sprite_rect, &mut tile_rect);
+        }
 
 
         canvas.set_draw_color(Color::RGB(0, 255, 0));
@@ -197,7 +180,7 @@ pub(crate) fn run() -> Result<(), String> {
         
         
         //Render Player
-        render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player).unwrap();
+        render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&font).unwrap();
         
         canvas.present();
 
@@ -235,6 +218,8 @@ pub(crate) fn run() -> Result<(), String> {
     // ...
 }
 
+
+//TODO: Break down into check tile and draw tile.
 fn check_tile(_new_grid: &mut Vec<Tile>, 
     event_pump: &sdl2::EventPump, 
     canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, 
@@ -291,8 +276,6 @@ fn create_grid(rows: &i32, columns: &i32, _new_grid: &mut Vec<Tile>) {
         let col = i % columns;
 
         let tile = Rect::new(100 * row as i32, 100 * col as i32, 100, 100);
-    
-    
 
         let new_tile = Tile {
             rect: tile,
