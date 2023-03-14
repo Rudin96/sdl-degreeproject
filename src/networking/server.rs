@@ -38,10 +38,12 @@ fn create(_servertype: &ServerType) -> std::io::Result<()> {
             }
 
             //TODO check incoming data
-            println!("received pos string {} from client {}", String::from_utf8_lossy(&filled_buffer), from.to_string());
-            let playerPosDes: Vector2 = serde_json::from_slice(&filled_buffer).unwrap();
-            playerpositions.insert(*connectedclients.get(&from).unwrap(), playerPosDes);
-            
+            // println!("received pos string {} from client {}", String::from_utf8_lossy(&filled_buffer), from.to_string());
+            let playerpos_des: Vector2 = serde_json::from_slice(&filled_buffer).unwrap();
+            playerpositions.insert(*connectedclients.get(&from).unwrap(), playerpos_des);
+            for c in &connectedclients {
+                socket.send_to(serde_json::to_string(&playerpositions).unwrap().as_bytes(), c.0).unwrap();
+            }
         }
         });
         // handle.join().unwrap();

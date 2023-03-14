@@ -20,7 +20,7 @@ impl Client {
         let selfsocket = self.socket.try_clone().unwrap();
         thread::spawn(move || {
             loop {
-                let mut buf = [0; constvalues::MAX_PLAYERS * 2 + 1];
+                let mut buf = [0; constvalues::BUF_SIZE];
         
                 let (number_of_bytes, _from) = selfsocket.recv_from(&mut buf).expect("Client recieve error");
                 let mut filled_buf = &mut buf[..number_of_bytes];
@@ -30,7 +30,7 @@ impl Client {
         });
     }
     
-    pub fn connect(&self, mut ipaddress: String) {
+    fn connect(&self, mut ipaddress: String) {
         let selfsocket = self.socket.try_clone().unwrap();
         ipaddress.push_str(constvalues::PORT_NUMBER);
         selfsocket.connect(&ipaddress).expect("Couldnt connect to address!");
@@ -43,7 +43,7 @@ impl Client {
 
     pub fn waitforclientid(&self) -> i8 {
         let selfsocket = self.socket.try_clone().unwrap();
-        let mut buf = [0; constvalues::MAX_PLAYERS * 2 + 1];
+        let mut buf = [0; constvalues::BUF_SIZE];
         
         let (number_of_bytes, _from) = selfsocket.recv_from(&mut buf).expect("Client recieve error");
         let filled_buf = &mut buf[..number_of_bytes];

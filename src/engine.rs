@@ -3,6 +3,9 @@ mod player;
 mod objects;
 
 use player::player_module;
+use sdl_degreeproject::constvalues;
+use sdl_degreeproject::datatypes::vector::Vector2;
+use sdl_degreeproject::networking::{client, server};
 use self::objects::object_module::Objects;
 use self::player::player_module::Player;
 use self::render::render_text;
@@ -12,6 +15,8 @@ use objects::object_module::place_furniture;
 use sdl2::mouse::{MouseButton};
 use sdl2::render::{TextureCreator, Texture};
 use sdl2::video::WindowContext;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::{env, vec};
 use std::path::Path;
 use std::time::Duration;
@@ -34,12 +39,24 @@ const SCREEN_HEIGHT: u32 = 1000;
 const GRID_WIDTH: i32 = (SCREEN_WIDTH / 10) as i32;
 const GRID_HEIGHT: i32 = (SCREEN_HEIGHT / 10) as i32;
 
-
 pub(crate) fn run() -> Result<(), String> {
-
+    let args: Vec<String> = env::args().collect();
     let sdl_context = sdl2::init()?;
     
     //Read network info(clientid, position) to shared buffer
+    if args.contains(&String::from("server"))
+    {
+        server::createlan();
+    }
+    let sharedbuffer = Arc::new(Mutex::new(Vec::<Vec::<u8>>::new()));
+    let netbff = sharedbuffer.clone();
+    let netclient = client::init();
+
+    netclient.recieve(move |netbuffer| {
+        
+        let mut buffer = netbff.lock().unwrap();
+        buffer.push(netbuffer.to_vec());
+    });
 
     let video_subsystem = sdl_context.video()?;
     let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).unwrap();
@@ -132,7 +149,7 @@ pub(crate) fn run() -> Result<(), String> {
 
     let mut i = 0;
 
-    
+    let mut prevPlayerPos = player.position;
 
     'running: loop {
 
@@ -182,10 +199,30 @@ pub(crate) fn run() -> Result<(), String> {
         }
         
         //Send local position to server
+        if player.position != prevPlayerPos {
+            netclient.sendpos(Vector2 {x: player.position.x, y: player.position.y});
+            prevPlayerPos = player.position;
+        }
 
+        let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
         canvas.clear();
 
+        //Here we deserialize to playerposition hashmap
+        {
+            let vec = sharedbuffer.lock().unwrap();
+            for x in vec.to_vec() {
+                let positions_des = String::from_utf8(x).unwrap();
+                // println!("Bytes are: {:?}", positions_des);
+                playerpositions = serde_json::from_str(&positions_des).unwrap();
+            }
+        }
 
+        //Here we read everything from it
+        for p in &playerpositions {
+            println!("Client {} has pos {:?}", p.0, p.1);
+        }
+
+        sharedbuffer.lock().unwrap().clear();
         check_tile(&mut _new_grid, &event_pump, &mut canvas, &player_input, &mut sprite_rect, &mut tile_rect);
 
 
