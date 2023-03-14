@@ -1,22 +1,6 @@
 use std::{net::{UdpSocket, Ipv4Addr, SocketAddr}, thread, collections::HashMap};
 
-use serde::{Serialize, ser::SerializeStruct};
-
-use crate::{constvalues::{self, BUF_SIZE}, datatypes::vector::Vector2};
-
-pub struct PlayerData {
-    pos: [u8]
-}
-
-impl Serialize for PlayerData {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer {
-        let mut s = serializer.serialize_struct("PlayerData", 1)?;
-        s.serialize_field("pos", &self.pos)?;
-        s.end()
-    }
-}
+use crate::{constvalues::{BUF_SIZE}, datatypes::vector::Vector2};
 
 pub enum ServerType {
     LOCAL,
@@ -50,10 +34,13 @@ fn create(_servertype: &ServerType) -> std::io::Result<()> {
                 playerpositions.insert(client_id, Vector2 { x: 0, y: 0 });
                 client_id += 1;
                 socket.send_to(&filled_buffer, from).expect("Couldnt send connectionpacket back to client");
+                continue;
             }
 
             //TODO check incoming data
+            println!("received pos string {} from client {}", String::from_utf8_lossy(&filled_buffer), from.to_string());
             let playerPosDes: Vector2 = serde_json::from_slice(&filled_buffer).unwrap();
+            playerpositions.insert(*connectedclients.get(&from).unwrap(), playerPosDes);
             
         }
         });

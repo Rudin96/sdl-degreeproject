@@ -6,12 +6,13 @@ use crate::{constvalues, datatypes::vector::Vector2};
 pub struct Client {
     socket: UdpSocket,
     ipaddress: String,
-    id: i8,
+    pub id: i8,
 }
 
 impl Client {
     pub fn sendpos(&self, pos: Vector2) {
         let serstring = serde_json::to_string(&pos).unwrap();
+        println!("Pos string: {}", serstring);
         self.socket.send_to(serstring.as_bytes(), self.ipaddress.as_str()).unwrap();
     }
     

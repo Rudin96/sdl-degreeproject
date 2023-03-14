@@ -6,6 +6,7 @@ use sdl_degreeproject::constvalues;
 use sdl_degreeproject::datatypes::vector::Vector2;
 use sdl_degreeproject::networking::{server, client};
 
+use std::collections::HashMap;
 use std::env;
 use std::path::Path;
 use std::sync::{Mutex, Arc};
@@ -55,6 +56,18 @@ fn main() -> Result<(), String> {
         let mut locbuffer = clonedbuf.lock().unwrap();
         locbuffer.copy_from_slice(netbuffer);
     });
+
+    //We know network positions
+    let networkplayerpositions: HashMap<u8, Point> = HashMap::new();
+
+    //Local player positions
+    let mut playerpositions: HashMap<u8, Point> = HashMap::new();
+
+    // for e in networkplayerpositions {
+    //     playerpositions.insert(e.0, e.1);
+    // }
+
+    // networkplayerpositions.remove(netclient.id);
 
     println!("Connected to localhost");
 
@@ -165,9 +178,11 @@ fn main() -> Result<(), String> {
             }
         }
 
+        
 
         if left_is_held_down {
             player.position = player.position.offset(-player.speed, 0);
+            // playerpositions.get_mut(netclient.id) = player.position.offset(x, y);
         } 
         if right_is_held_down {
             player.position = player.position.offset(player.speed, 0);
@@ -188,6 +203,7 @@ fn main() -> Result<(), String> {
 
         let screen_position = player.position + Point::new(canvas_width as i32/2, (canvas_height as i32 / 2) - 32) ;
         let screen_rect = Rect::from_center(screen_position, text_texture.query().width, text_texture.query().height);
+
 
 
         canvas.clear();
