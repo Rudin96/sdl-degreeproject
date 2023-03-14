@@ -1,9 +1,8 @@
 use std::{net::{UdpSocket, Ipv4Addr, SocketAddr}, thread, collections::HashMap};
 
-use sdl2::rect::Point;
 use serde::{Serialize, ser::SerializeStruct};
 
-use crate::constvalues;
+use crate::{constvalues::{self, BUF_SIZE}, datatypes::vector::Vector2};
 
 pub struct PlayerData {
     pos: [u8]
@@ -33,12 +32,12 @@ pub fn createlan() {
 
 fn create(_servertype: &ServerType) -> std::io::Result<()> {
     let mut connectedclients = HashMap::new();
-    let mut playerpositions: Vec<Point> = Vec::new();
+    let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
     let mut client_id = 0;
     thread::spawn(move || {
         let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 1337))).expect("Couldnt bind socket");
         loop {
-            let mut buf = [0; constvalues::MAX_PLAYERS * 2 + 1];
+            let mut buf = [0; BUF_SIZE];
             let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Error receiving data");
             
             let filled_buffer = &mut buf[..number_of_bytes];
@@ -48,25 +47,14 @@ fn create(_servertype: &ServerType) -> std::io::Result<()> {
                 let _ = &connectedclients.insert(from, client_id);
                 filled_buffer[1] = client_id;
                 println!("Sending {} to client: {}", client_id, from);
+                playerpositions.insert(client_id, Vector2 { x: 0, y: 0 });
                 client_id += 1;
-                playerpositions.push(Point::new(0, 0));
                 socket.send_to(&filled_buffer, from).expect("Couldnt send connectionpacket back to client");
             }
-            
-            // let decoded_buffer = String::from_utf8_lossy(filled_buffer);
-            for e in &connectedclients {
-                buf[0] = 17;
 
-                let mut counter = 1;
-                for i in &playerpositions {
-                    buf[counter] = i.x() as u8;
-                    buf[counter + 1] = i.y() as u8;
-                    counter += 2;
-                }
-                socket.send_to(&buf, e.0).expect("Couldnt send back to sender");
-                println!("Sending data back to clients");
-                // println!("Server: Sending {} back to client: {}", decoded_buffer, e.0);
-            }
+            //TODO check incoming data
+            let playerPosDes: Vector2 = serde_json::from_slice(&filled_buffer).unwrap();
+            
         }
         });
         // handle.join().unwrap();

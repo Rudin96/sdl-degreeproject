@@ -3,6 +3,7 @@ mod input;
 
 use render::render;
 use sdl_degreeproject::constvalues;
+use sdl_degreeproject::datatypes::vector::Vector2;
 use sdl_degreeproject::networking::{server, client};
 
 use std::env;
@@ -35,9 +36,8 @@ fn main() -> Result<(), String> {
     let _serverarg = String::from("server");
     let dedserverarg = String::from("dedserver");
 
-    let sharedbuffer = Arc::new(Mutex::new([0; constvalues::MAX_PLAYERS * 2 + 1]));
-    let netclient = client::init();
-
+    let sharedbuffer = Arc::new(Mutex::new([0; constvalues::BUF_SIZE]));
+    
     if args.contains(&dedserverarg)
     {
         server::createlan();
@@ -45,11 +45,11 @@ fn main() -> Result<(), String> {
             
         }
     }
-
+    
+    let netclient = client::init();
     // server::createlan();
 
     let ownedbuf = sharedbuffer.to_owned();
-    netclient.connect(String::from("127.0.0.1"));
     netclient.recieve(move|netbuffer: &mut [u8]| {
         let clonedbuf = ownedbuf.clone();
         let mut locbuffer = clonedbuf.lock().unwrap();
@@ -180,7 +180,7 @@ fn main() -> Result<(), String> {
         }
 
         if player.position != prevplayerpos {
-            // netclient.send(&player.position);
+            netclient.sendpos(Vector2 {x: player.position.x(), y: player.position.y()});
             prevplayerpos = player.position;
         }
 
@@ -230,7 +230,7 @@ fn main() -> Result<(), String> {
         
         
         
-        render(&mut canvas, Color::RGB(30, 30, 30), &texture,&players[i]).unwrap();
+        render(&mut canvas, Color::RGB(30, 30, 30), &texture,&player).unwrap();
         canvas.copy(&text_texture, None, screen_rect).unwrap();
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
