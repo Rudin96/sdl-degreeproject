@@ -12,7 +12,10 @@ pub mod player_module{
         pub position: Point,
         pub sprite: Rect,
         pub speed: i32,
-        pub player_texture: Texture<'a>
+        pub player_texture: Texture<'a>,
+        pub player_id: i32,
+
+        pub text_texture: Option<Texture<'a>>
     }
 
     pub struct PlayerText<'a>

@@ -54,7 +54,8 @@ pub(crate) fn run() -> Result<(), String> {
     path.push("fontaa.ttf");
     let ttf_context = sdl2::ttf::init().unwrap();
     let mut font = ttf_context.load_font(path,32).unwrap();
-    font.set_style(sdl2::ttf::FontStyle::BOLD);
+    font.set_style(sdl2::ttf::FontStyle::NORMAL);
+    
 
     let texture = texture_creator.load_texture("face.png")?;
     let catman = texture_creator.load_texture("catman.png")?;
@@ -67,9 +68,16 @@ pub(crate) fn run() -> Result<(), String> {
         position: Point::new(0, 0), 
         sprite: Rect::new(0,0,32,32), 
         speed: 5,
-        player_texture: texture
-        
+        player_texture: texture,
+        player_id: 0,
+        text_texture: None    
     };
+
+    //let mut player_vec: Vec<Player> = vec![];
+
+    
+
+
 
     //player.player_texture = Some(texture);
 
@@ -83,20 +91,22 @@ pub(crate) fn run() -> Result<(), String> {
 
 
     //Text and Text Surface
-    let color_text = Color::RGB(255, 0,0);
-    let player_text = "aslkdjaldkj";
-    let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
-    let text_texture = texture_creator.create_texture_from_surface(&text_surface).unwrap();
+
+    // for i in player_vec {
+    //     let player_text = "Player ".to_owned() + &player.player_id.to_string();
+    //     let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
+    //     let binding = canvas.texture_creator();
+    //     let text_texture = binding.create_texture_from_surface(&text_surface).unwrap();
+
+    //     player.player_texture = text_texture;
+    // }
+
+
     
     
     
     
-    //let text_texture = load_texture(&texture_creator);
-
-
-
-
-   
+    
     let mut event_pump = sdl_context.event_pump().unwrap();
     
     let rows =  GRID_HEIGHT;
@@ -108,7 +118,6 @@ pub(crate) fn run() -> Result<(), String> {
 
     let mut _new_grid: Vec<Tile> = vec![];
     create_grid(&rows, &columns, &mut _new_grid);
-
 
 
     // Number of frames to average over
@@ -175,9 +184,8 @@ pub(crate) fn run() -> Result<(), String> {
 
         check_tile(&mut _new_grid, &event_pump, &mut canvas, &player_input, &mut sprite_rect, &mut tile_rect);
 
+
         canvas.set_draw_color(Color::RGB(0, 255, 0));
-
-
         for piece in &_new_grid {
 
             match &piece.furniture {
@@ -186,15 +194,14 @@ pub(crate) fn run() -> Result<(), String> {
             }
         }
 
-        //Text location based on player
-        //canvas.set_draw_color(Color::RGB(255, 0, 0));
-        //render(&mut canvas, Color::RGB(255, 0, 0), &texture,&player).unwrap();
+        
         
         //Render Player
-        render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&text_texture).unwrap();
-        render_text(&mut canvas, Color::RGB(255, 0, 0), &text_texture, &player).unwrap();
+        render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player).unwrap();
         
         canvas.present();
+
+        
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
 
         // Get time after rendering frame

@@ -6,11 +6,10 @@ use crate::engine::player_module::Player;
 
 
 
-pub fn render_player(canvas: &mut WindowCanvas, color: Color,player: &Player, text_texture: &Texture) -> Result<(), String>{ 
+pub fn render_player(canvas: &mut WindowCanvas, color: Color,player: &Player) -> Result<(), String>{ 
 
     canvas.set_draw_color(color);
-    //canvas.clear();
-    
+
     let (width, height) = canvas.output_size().unwrap();
 
     let screen_position = player.position + Point::new(width as i32/2, height as i32 / 2);
@@ -18,7 +17,17 @@ pub fn render_player(canvas: &mut WindowCanvas, color: Color,player: &Player, te
 
     canvas.copy(&player.player_texture, player.sprite, screen_rect).unwrap();
 
-    render_text(canvas, color, text_texture, player);
+    match player.text_texture {
+        Some(ref texture) => {
+            // Pass the texture reference to the function
+            render_text(canvas, color, &texture, player).unwrap();
+        }
+        None => {
+            // Handle the case where text_texture is None
+        }
+    }
+
+    
 
     Ok(())
 }
