@@ -1,37 +1,70 @@
 use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr}, thread};
 
-const PORT_NUMBER: &str = ":1337";
+use crate::{constvalues, datatypes::vector::Vector2};
 
-pub fn connect<Func: Fn(&[u8]) + Send + 'static>(ipaddress: &str, function: Func) -> std::io::Result<()> {
-    let mut ip = ipaddress.to_owned();
-    ip.push_str(PORT_NUMBER);
+
+pub struct Client {
+    socket: UdpSocket,
+    ipaddress: String,
+    pub id: i8,
+}
+
+impl Client {
+    pub fn sendpos(&self, pos: Vector2) {
+        let serstring = serde_json::to_string(&pos).unwrap();
+        println!("Pos string: {}", serstring);
+        self.socket.send_to(serstring.as_bytes(), self.ipaddress.as_str()).unwrap();
+    }
+    
+    pub fn recieve<Func: Fn(&mut[u8]) + Send + 'static>(&self, function: Func) {
+        let selfsocket = self.socket.try_clone().unwrap();
         thread::spawn(move || {
-            let sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0);
-            let socket = UdpSocket::bind(sock_addr).expect("Error binding to socket");
-            socket.connect(String::from(&ip)).expect("Couldnt connect to address!");
-
-            // let addr = socket.local_addr().expect("Couldnt connect to local address");
-            // let remoteaddr = socket.peer_addr().expect("Couldnt determine remote address");
-
-            // println!("Client: Socket address is: {addr}");
-            // println!("Client: Remote Socket address is: {remoteaddr}");
-
             loop {
-                let mut message: String = String::from("Client to server testmessage");
-                // std::io::stdin().read_line(&mut message).expect("Not a valid entry");
-                let bytemessage = message.as_bytes();
-                socket.send_to(bytemessage, &ip).expect("Couldnt send message to server");
-                // println!("Client: Sending message to host!");
+                let mut buf = [0; constvalues::MAX_PLAYERS * 2 + 1];
+        
+                let (number_of_bytes, _from) = selfsocket.recv_from(&mut buf).expect("Client recieve error");
+                let mut filled_buf = &mut buf[..number_of_bytes];
 
-                let mut buf = [0; 1024];
-
-                let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Client recieve error");
-                function(&buf);
-                // let filled_buffer = &buf[..number_of_bytes];
-
-                // println!("Client: Received {} from {}", String::from_utf8_lossy(filled_buffer), from);
+                function(&mut filled_buf);
             }
         });
-    // handle.join().unwrap();
-    Ok(())
+    }
+    
+    pub fn connect(&self, mut ipaddress: String) {
+        let selfsocket = self.socket.try_clone().unwrap();
+        ipaddress.push_str(constvalues::PORT_NUMBER);
+        selfsocket.connect(&ipaddress).expect("Couldnt connect to address!");
+        let mut connectstream = [0; 4];
+        connectstream[0] = 26;
+        selfsocket.send_to(&connectstream, &ipaddress).expect("Connection request send error");
+
+        println!("Sending connection request");
+    }
+
+    pub fn waitforclientid(&self) -> i8 {
+        let selfsocket = self.socket.try_clone().unwrap();
+        let mut buf = [0; constvalues::MAX_PLAYERS * 2 + 1];
+        
+        let (number_of_bytes, _from) = selfsocket.recv_from(&mut buf).expect("Client recieve error");
+        let filled_buf = &mut buf[..number_of_bytes];
+
+        if filled_buf[0] == 26 {
+             println!("Receiving connection packet from server with id: {}", filled_buf[1]);
+             return filled_buf[1] as i8
+        } else {
+            -1
+        }
+    }
+}
+
+pub fn init() -> Client {
+    let sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0);
+    let socket = UdpSocket::bind(sock_addr).expect("Error binding to socket");
+    let connectionip = String::from("127.0.0.1");
+    println!("Socket address is: {}", socket.local_addr().unwrap().to_string());
+    let mut newclient = Client { socket, ipaddress: connectionip.to_string() , id: 0 };
+    newclient.connect(connectionip.to_string());
+    newclient.ipaddress.push_str(constvalues::PORT_NUMBER);
+    newclient.id = newclient.waitforclientid();
+    newclient
 }
