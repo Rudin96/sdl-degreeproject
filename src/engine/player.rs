@@ -3,21 +3,30 @@
 
 pub mod player_module{
 
-    use sdl2::rect::{Rect, Point};
 
-    #[derive(Debug)]
-    pub struct Player
+    use sdl2::{rect::{Rect, Point}, render::Texture, pixels::Color};
+
+    //#[derive(Debug)]
+    pub struct Player<'a>
     {
         pub position: Point,
         pub sprite: Rect,
-        pub speed: i32
+        pub speed: i32,
+        pub player_texture: Texture<'a>
     }
 
-    impl Default for Player{
-        fn default() -> Self {
-            Self { position: Point::new(0, 0), sprite: Rect::new(0,0,32,32), speed: 5 }
-        }
+    pub struct PlayerText<'a>
+    {
+        pub text_texture: Texture<'a>,
+        pub text: String,
+        pub text_color: Color
     }
+
+    // impl Default for Player<'_>{
+    //     fn default() -> Self {
+    //         Self { position: Point::new(0, 0), sprite: Rect::new(0,0,32,32), speed: 5,player_texture: None }
+    //     }
+    // }
 
     pub struct PlayerInput{
 

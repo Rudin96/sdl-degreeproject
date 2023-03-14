@@ -6,42 +6,37 @@ use crate::engine::player_module::Player;
 
 
 
-pub fn render(canvas: &mut WindowCanvas, color: Color, texture: &Texture,player: &Player) -> Result<(), String>{ 
+pub fn render_player(canvas: &mut WindowCanvas, color: Color,player: &Player, text_texture: &Texture) -> Result<(), String>{ 
 
     canvas.set_draw_color(color);
     //canvas.clear();
     
-    let (width, height) = canvas.output_size()?;
+    let (width, height) = canvas.output_size().unwrap();
 
     let screen_position = player.position + Point::new(width as i32/2, height as i32 / 2);
     let screen_rect = Rect::from_center(screen_position, player.sprite.width(), player.sprite.height());
 
-    canvas.copy(texture, player.sprite, screen_rect).unwrap();
+    canvas.copy(&player.player_texture, player.sprite, screen_rect).unwrap();
+
+    render_text(canvas, color, text_texture, player);
+
+    Ok(())
+}
+
+pub fn render_text(canvas: &mut WindowCanvas, color: Color, text_texture: &Texture,player: &Player) -> Result<(), String>{ 
+
+    canvas.set_draw_color(color);
+
+    let (width, height) = canvas.output_size()?;
+
+    let screen_position = player.position + Point::new(width as i32/2, (height as i32 / 2) - 32) ;
+    let screen_rect = Rect::from_center(screen_position, text_texture.query().width, text_texture.query().height);
+
+    
+
+    canvas.copy(text_texture, None, screen_rect).unwrap();
 
     Ok(())
 }
 
 
-// pub fn load_font(canvas: &mut &WindowCanvas,texture: &Texture) -> Texture
-// {
-//     let mut path = Path::new(env!("CARGO_MANIFEST_DIR")).to_owned();
-//     path.push("fontaa.ttf");
-
-//     let ttf_context = sdl2::ttf::init().unwrap();
-//     let mut font = ttf_context.load_font(path,32).unwrap();
-
-//     font.set_style(sdl2::ttf::FontStyle::BOLD);
-
-//     let texture_creator = canvas.texture_creator();
-
-//     let text_surface = font.render("AAAAA").blended(Color::RGBA(255,0,0,255)).unwrap();
-//     let text_texture = &texture_creator.create_texture_from_surface(&text_surface).unwrap();
-
-//     text_texture
-
-//     // let (canvas_width, canvas_height) = canvas.output_size().unwrap();
-
-//     // let screen_position = player.position + Point::new(canvas_width as i32/2, (canvas_height as i32 / 2) - 32) ;
-//     // let screen_rect = Rect::from_center(screen_position, text_texture.query().width, text_texture.query().height);
-
-// }

@@ -4,7 +4,9 @@ mod objects;
 
 use player::player_module;
 use self::objects::object_module::Objects;
-use render::render;
+use self::player::player_module::Player;
+use self::render::render_text;
+use render::render_player;
 use objects::object_module::place_furniture;
 
 use sdl2::mouse::{MouseButton};
@@ -37,7 +39,7 @@ pub(crate) fn run() -> Result<(), String> {
 
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
-    let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).expect("askldj");
+    let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).unwrap();
 
     let window = video_subsystem.window("My new SDL Window", SCREEN_WIDTH, SCREEN_HEIGHT)
         .position_centered()
@@ -48,16 +50,52 @@ pub(crate) fn run() -> Result<(), String> {
 
     let texture_creator = canvas.texture_creator();
 
+    let mut path = Path::new(env!("CARGO_MANIFEST_DIR")).to_owned();
+    path.push("fontaa.ttf");
+    let ttf_context = sdl2::ttf::init().unwrap();
+    let mut font = ttf_context.load_font(path,32).unwrap();
+    font.set_style(sdl2::ttf::FontStyle::BOLD);
+
     let texture = texture_creator.load_texture("face.png")?;
     let catman = texture_creator.load_texture("catman.png")?;
 
 
-    let mut player = player_module::Player::default();
+    //let mut player = player_module::Player::default();
+
+    let mut player = Player
+    {
+        position: Point::new(0, 0), 
+        sprite: Rect::new(0,0,32,32), 
+        speed: 5,
+        player_texture: texture
+        
+    };
+
+    //player.player_texture = Some(texture);
+
+
     let mut player_input = player_module::PlayerInput::default();
 
     canvas.set_draw_color(Color::RGB(0, 255, 255));
 
-    let text_texture = load_texture(&texture_creator);
+    
+
+
+
+    //Text and Text Surface
+    let color_text = Color::RGB(255, 0,0);
+    let player_text = "aslkdjaldkj";
+    let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
+    let text_texture = texture_creator.create_texture_from_surface(&text_surface).unwrap();
+    
+    
+    
+    
+    //let text_texture = load_texture(&texture_creator);
+
+
+
+
    
     let mut event_pump = sdl_context.event_pump().unwrap();
     
@@ -132,12 +170,6 @@ pub(crate) fn run() -> Result<(), String> {
         }
 
 
-        let (canvas_width, canvas_height) = canvas.output_size()?;
-
-        let screen_position = player.position + Point::new(canvas_width as i32/2, (canvas_height as i32 / 2) - 32) ;
-        let screen_rect = Rect::from_center(screen_position, text_texture.query().width, text_texture.query().height);
-
-
         canvas.clear();
 
 
@@ -154,9 +186,14 @@ pub(crate) fn run() -> Result<(), String> {
             }
         }
 
-        canvas.set_draw_color(Color::RGB(255, 0, 0));
-        render(&mut canvas, Color::RGB(i, 64, 255 - i), &texture,&player).unwrap();
-        canvas.copy(&text_texture, None, screen_rect).unwrap();
+        //Text location based on player
+        //canvas.set_draw_color(Color::RGB(255, 0, 0));
+        //render(&mut canvas, Color::RGB(255, 0, 0), &texture,&player).unwrap();
+        
+        //Render Player
+        render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&text_texture).unwrap();
+        render_text(&mut canvas, Color::RGB(255, 0, 0), &text_texture, &player).unwrap();
+        
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
 
@@ -238,17 +275,7 @@ fn check_tile(_new_grid: &mut Vec<Tile>,
     }
 }
 
-fn load_texture(texture_creator: &TextureCreator<WindowContext>) -> Texture {
-    let mut path = Path::new(env!("CARGO_MANIFEST_DIR")).to_owned();
-    path.push("fontaa.ttf");
-    let ttf_context = sdl2::ttf::init().unwrap();
-    let mut font = ttf_context.load_font(path,32).unwrap();
-    font.set_style(sdl2::ttf::FontStyle::BOLD);
-    
-    let text_surface = font.render("Player{}").blended(Color::RGBA(255,0,0,255)).unwrap();
-    let text_texture = texture_creator.create_texture_from_surface(&text_surface).unwrap();
-    text_texture
-}
+
 
 fn create_grid(rows: &i32, columns: &i32, _new_grid: &mut Vec<Tile>) {
     for i in 0..(rows * columns) {
