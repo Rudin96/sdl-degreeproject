@@ -148,11 +148,12 @@ pub(crate) fn run() -> Result<(), String> {
     let mut frame_index = 0;
 
     let mut i = 0;
-
+    
     let mut prevPlayerPos = player.position;
-
+    let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
+    
     'running: loop {
-
+        
         let start_time = unsafe { sdl2::sys::SDL_GetTicks() };
 
 
@@ -204,7 +205,6 @@ pub(crate) fn run() -> Result<(), String> {
             prevPlayerPos = player.position;
         }
 
-        let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
         canvas.clear();
 
         //Here we deserialize to playerposition hashmap
