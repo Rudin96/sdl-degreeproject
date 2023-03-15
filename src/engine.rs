@@ -3,12 +3,23 @@ mod player;
 mod objects;
 
 use player::player_module;
+use sdl_degreeproject::constvalues;
+use sdl_degreeproject::datatypes::vector::Vector2;
+use sdl_degreeproject::networking::{client, server};
 use self::objects::object_module::Objects;
 use self::player::player_module::Player;
+use self::render::render_text;
+
 use render::render_player;
+use render::render_players;
+
 use objects::object_module::place_furniture;
 
 use sdl2::mouse::{MouseButton};
+use sdl2::render::{TextureCreator, Texture};
+use sdl2::video::WindowContext;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::{env, vec};
 use std::path::Path;
 use std::time::Duration;
@@ -31,10 +42,25 @@ const SCREEN_HEIGHT: u32 = 1000;
 const GRID_WIDTH: i32 = (SCREEN_WIDTH / 10) as i32;
 const GRID_HEIGHT: i32 = (SCREEN_HEIGHT / 10) as i32;
 
-
 pub(crate) fn run() -> Result<(), String> {
-
+    let args: Vec<String> = env::args().collect();
     let sdl_context = sdl2::init()?;
+    
+    //Read network info(clientid, position) to shared buffer
+    if args.contains(&String::from("server"))
+    {
+        server::createlan();
+    }
+    let sharedbuffer = Arc::new(Mutex::new(Vec::<Vec::<u8>>::new()));
+    let netbff = sharedbuffer.clone();
+    let netclient = client::init();
+
+    netclient.recieve(move |netbuffer| {
+        
+        let mut buffer = netbff.lock().unwrap();
+        buffer.push(netbuffer.to_vec());
+    });
+
     let video_subsystem = sdl_context.video()?;
     let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).unwrap();
 
@@ -70,23 +96,54 @@ pub(crate) fn run() -> Result<(), String> {
         text_texture: None    
     };
 
-    //let mut players_positions: HashMap<u8,Point> = HashMap::new();
+    let mut players_positions: HashMap<u8,Point> = HashMap::new();
 
-    //players_positions.insert(0, player.position);
+
+
+    // for i in    {
+        
+    //     let mut player = Player
+    //     {
+    //         position: Point::new(0, 0), 
+    //         sprite: Rect::new(0,0,32,32), 
+    //         speed: 5,
+    //         player_texture: texture,
+    //         player_id: 0,
+    //         text_texture: None    
+    //     };
+
+
+    //     players_positions.insert(0, player.position);
+
+
+    // }
+
+
 
     let mut player_input = player_module::PlayerInput::default();
-
     canvas.set_draw_color(Color::RGB(0, 255, 255));
+
+    
+
+
 
     //Text and Text Surface
 
-    // let player_text = "Player ".to_owned() + &player.player_id.to_string();
-    // let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
-    // let text_texture = canvas.texture_creator().create_texture_from_surface(&text_surface).unwrap();
+    // for i in player_vec {
+    //     let player_text = "Player ".to_owned() + &player.player_id.to_string();
+    //     let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
+    //     let binding = canvas.texture_creator();
+    //     let text_texture = binding.create_texture_from_surface(&text_surface).unwrap();
 
-    // player.player_texture = text_texture;
-     
+    //     player.player_texture = text_texture;
+    // }
 
+
+    
+    
+    
+    
+    
     let mut event_pump = sdl_context.event_pump().unwrap();
     
     let rows =  GRID_HEIGHT;
@@ -94,6 +151,7 @@ pub(crate) fn run() -> Result<(), String> {
 
     let mut tile_rect = Rect::new(0,0,0,0);
     let mut sprite_rect = Rect::new(0,0,0,0);
+
 
     let mut _new_grid: Vec<Tile> = vec![];
     create_grid(&rows, &columns, &mut _new_grid);
@@ -108,11 +166,14 @@ pub(crate) fn run() -> Result<(), String> {
 
     let mut i = 0;
 
-    
+    let mut prevPlayerPos = player.position;
+
+    let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
 
     'running: loop {
 
         let start_time = unsafe { sdl2::sys::SDL_GetTicks() };
+
 
         i = (i + 1) % 255;
         canvas.set_draw_color(Color::RGB(i, 64, 255-i));
@@ -133,8 +194,6 @@ pub(crate) fn run() -> Result<(), String> {
                 Event::KeyDown { keycode: Some(Keycode::Right), .. } => {player_input.right_is_held_down = true;}
                 Event::KeyDown { keycode: Some(Keycode::Up), .. } => {player_input.up_is_held_down = true;}
                 Event::KeyDown { keycode: Some(Keycode::Down), .. } => {player_input.down_is_held_down = true;}
-                
-                Event::KeyDown { keycode: Some(Keycode::Tab), .. } => {player_input.tab = !player_input.tab;}
 
                 Event::KeyUp { keycode: Some(Keycode::Left), .. } => { player_input.left_is_held_down = false;}
                 Event::KeyUp { keycode: Some(Keycode::Right), .. } => { player_input.right_is_held_down = false;}
@@ -157,17 +216,37 @@ pub(crate) fn run() -> Result<(), String> {
         if player_input.down_is_held_down {
             player.position = player.position.offset(0, player.speed);
         }
-
-
-        canvas.clear();
-
-
-        if player_input.tab {
-            
-            check_tile(&mut _new_grid, &event_pump, &mut canvas, &player_input, &mut sprite_rect, &mut tile_rect);
+        
+        //Send local position to server
+        if player.position != prevPlayerPos {
+            netclient.sendpos(Vector2 {x: player.position.x, y: player.position.y});
+            prevPlayerPos = player.position;
         }
 
+        
+        canvas.clear();
 
+        //Here we deserialize to playerposition hashmap
+        {
+            let vec = sharedbuffer.lock().unwrap();
+            for x in vec.to_vec() {
+                let positions_des = String::from_utf8(x).unwrap();
+                // println!("Bytes are: {:?}", positions_des);
+                playerpositions = serde_json::from_str(&positions_des).unwrap();
+            }
+        }
+
+        //Here we read everything from it
+        // for p in &playerpositions {
+        //     println!("Client {} has pos {:?}", p.0, p.1);
+        // }
+
+        sharedbuffer.lock().unwrap().clear();
+
+        draw_tiles(&mut _new_grid, &mut canvas);
+        //check_tile(&mut _new_grid, &event_pump, &mut canvas, &player_input, &mut sprite_rect, &mut tile_rect);
+        
+        
         canvas.set_draw_color(Color::RGB(0, 255, 0));
         for piece in &_new_grid {
 
@@ -178,9 +257,16 @@ pub(crate) fn run() -> Result<(), String> {
         }
 
         
-        
+        //TODO render players foreach networkposition
         //Render Player
-        render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&font).unwrap();
+
+        for playerclient in &playerpositions {
+
+            render_players(Color::RGB(i, 64, 255 - i),&mut canvas,playerclient,&player)
+
+            //render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&font).unwrap();
+        }
+
         
         canvas.present();
 
@@ -219,7 +305,15 @@ pub(crate) fn run() -> Result<(), String> {
 }
 
 
-//TODO: Break down into check tile and draw tile.
+fn draw_tiles(_new_grid: &mut Vec<Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>){
+    
+    for tile in  _new_grid{
+        canvas.set_draw_color(Color::RGB(0, 255, 0));
+        canvas.draw_rect(tile.rect).unwrap();    
+    }
+
+}
+
 fn check_tile(_new_grid: &mut Vec<Tile>, 
     event_pump: &sdl2::EventPump, 
     canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, 
@@ -276,6 +370,8 @@ fn create_grid(rows: &i32, columns: &i32, _new_grid: &mut Vec<Tile>) {
         let col = i % columns;
 
         let tile = Rect::new(100 * row as i32, 100 * col as i32, 100, 100);
+    
+    
 
         let new_tile = Tile {
             rect: tile,

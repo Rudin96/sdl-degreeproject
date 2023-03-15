@@ -1,8 +1,22 @@
 use sdl2::{render::{WindowCanvas, Texture}, pixels::Color, rect::{Point, Rect}, ttf::Font};
+use sdl_degreeproject::datatypes::vector::Vector2;
 
 use crate::engine::player_module::Player;
 
+pub fn render_players(color: Color,canvas: &mut WindowCanvas,playerclient: (&u8,&Vector2),player: &Player)
+{
 
+    canvas.set_draw_color(color);
+
+    let (width, height) = canvas.output_size().unwrap();
+
+    let playpos = Point::new(playerclient.1.x,playerclient.1.y);
+
+    let screen_position = playpos + Point::new(width as i32/2, height as i32 / 2);
+    let screen_rect = Rect::from_center(screen_position, player.sprite.width(), player.sprite.height());
+
+    canvas.copy(&player.player_texture, player.sprite, screen_rect).unwrap();
+}
 
 
 //TODO:Break down into draw text and draw player.
