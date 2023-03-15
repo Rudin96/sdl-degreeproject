@@ -1,6 +1,6 @@
 use std::{net::{UdpSocket, Ipv4Addr, SocketAddr}, thread, collections::HashMap};
 
-use crate::{constvalues::{BUF_SIZE}, datatypes::vector::Vector2};
+use crate::{constvalues::{BUF_SIZE, PORT_NUMBER}, datatypes::vector::Vector2};
 
 pub enum ServerType {
     LOCAL,
@@ -19,7 +19,7 @@ fn create(_servertype: &ServerType) -> std::io::Result<()> {
     let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
     let mut client_id = 0;
     thread::spawn(move || {
-        let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 1337))).expect("Couldnt bind socket");
+        let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket");
         loop {
             let mut buf = [0; BUF_SIZE];
             let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Error receiving data");
@@ -52,7 +52,7 @@ fn create(_servertype: &ServerType) -> std::io::Result<()> {
 
 pub fn createwan() {
     println!("Created server at *LAN IP HERE*");
-    // create(&ServerType::WAN).expect("server didn't create, WTF!?");
+    create(&ServerType::WAN).expect("server didn't create, WTF!?");
 }
 
 pub fn createoffline() {

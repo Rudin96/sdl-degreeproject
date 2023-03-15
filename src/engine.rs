@@ -50,7 +50,14 @@ pub(crate) fn run() -> Result<(), String> {
     }
     let sharedbuffer = Arc::new(Mutex::new(Vec::<Vec::<u8>>::new()));
     let netbff = sharedbuffer.clone();
-    let netclient = client::init();
+    let mut netclient = client::init();
+
+    if args.contains(&String::from("connect")) {
+        let res = args.binary_search(&String::from("connect")).unwrap();
+        netclient.connect(args.get(res).unwrap().to_string());
+    } else {
+        netclient.connect("127.0.0.1".to_string());
+    }
 
     netclient.recieve(move |netbuffer| {
         
@@ -218,9 +225,9 @@ pub(crate) fn run() -> Result<(), String> {
         }
 
         //Here we read everything from it
-        for p in &playerpositions {
-            println!("Client {} has pos {:?}", p.0, p.1);
-        }
+        // for p in &playerpositions {
+        //     println!("Client {} has pos {:?}", p.0, p.1);
+        // }
 
         sharedbuffer.lock().unwrap().clear();
         check_tile(&mut _new_grid, &event_pump, &mut canvas, &player_input, &mut sprite_rect, &mut tile_rect);

@@ -1,6 +1,6 @@
-use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr}, thread};
+use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr, ToSocketAddrs}, thread, str::FromStr};
 
-use crate::{constvalues, datatypes::vector::Vector2};
+use crate::{constvalues::{self, PORT_NUMBER}, datatypes::vector::Vector2};
 
 
 pub struct Client {
@@ -30,29 +30,31 @@ impl Client {
         });
     }
     
-    fn connect(&self, mut ipaddress: String) {
-        let selfsocket = self.socket.try_clone().unwrap();
-        ipaddress.push_str(constvalues::PORT_NUMBER);
-        selfsocket.connect(&ipaddress).expect("Couldnt connect to address!");
+    pub fn connect(&mut self, ipaddress: String) {
+        let selfsocket = &self.socket;
+        let connection_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::from_str(&ipaddress).unwrap()), PORT_NUMBER);
+        selfsocket.connect(&connection_addr).expect("Couldnt connect to address!");
         let mut connectstream = [0; 4];
         connectstream[0] = 26;
-        selfsocket.send_to(&connectstream, &ipaddress).expect("Connection request send error");
+        selfsocket.send_to(&connectstream, &connection_addr).expect("Connection request send error");
 
         println!("Sending connection request");
+
+        self.waitforclientid();
     }
 
-    pub fn waitforclientid(&self) -> i8 {
-        let selfsocket = self.socket.try_clone().unwrap();
+    fn waitforclientid(&mut self) {
+        let selfsocket = &self.socket;
         let mut buf = [0; constvalues::BUF_SIZE];
         
         let (number_of_bytes, _from) = selfsocket.recv_from(&mut buf).expect("Client recieve error");
         let filled_buf = &mut buf[..number_of_bytes];
 
+        
         if filled_buf[0] == 26 {
-             println!("Receiving connection packet from server with id: {}", filled_buf[1]);
-             return filled_buf[1] as i8
-        } else {
-            -1
+            println!("Receiving connection packet from server with id: {}", filled_buf[1]);
+            self.id = filled_buf[1] as i8;
+            self.ipaddress = _from.to_string();
         }
     }
 }
@@ -60,11 +62,6 @@ impl Client {
 pub fn init() -> Client {
     let sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0);
     let socket = UdpSocket::bind(sock_addr).expect("Error binding to socket");
-    let connectionip = String::from("127.0.0.1");
-    println!("Socket address is: {}", socket.local_addr().unwrap().to_string());
-    let mut newclient = Client { socket, ipaddress: connectionip.to_string() , id: 0 };
-    newclient.connect(connectionip.to_string());
-    newclient.ipaddress.push_str(constvalues::PORT_NUMBER);
-    newclient.id = newclient.waitforclientid();
+    let newclient = Client { socket: socket.try_clone().unwrap(), ipaddress: Ipv4Addr::UNSPECIFIED.to_string() , id: 0 };
     newclient
 }
