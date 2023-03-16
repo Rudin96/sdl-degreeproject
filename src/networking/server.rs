@@ -2,26 +2,32 @@ use std::{net::{UdpSocket, Ipv4Addr, SocketAddr}, thread, collections::HashMap};
 
 use crate::{constvalues::{BUF_SIZE, PORT_NUMBER}, datatypes::vector::Vector2};
 
+pub struct Server {
+
+}
+
 pub enum ServerType {
     LOCAL,
     WAN,
     OFFLINE
 }
 
-pub fn createlan() {
-    println!("Creating lan server..");
-    create(&ServerType::LOCAL).expect("server didn't create, WTF!?");
-    println!("LAN Server created and listening!");
-}
-
 fn create(_servertype: &ServerType) -> std::io::Result<()> {
     let mut connectedclients = HashMap::new();
     let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
     let mut client_id = 0;
+    let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket");
+    
+    
+    thread::spawn(|| {
+        
+    });
+    
     thread::spawn(move || {
-        let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket");
         loop {
-            let mut buf = [0; BUF_SIZE];
+            // let mut buf = [0; BUF_SIZE];
+            let mut buf: Vec<u8> = Vec::new();
+            println!("Server read timeout is {:?}", socket.read_timeout().unwrap());
             let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Error receiving data");
             
             let filled_buffer = &mut buf[..number_of_bytes];
@@ -52,6 +58,13 @@ fn create(_servertype: &ServerType) -> std::io::Result<()> {
         // handle.join().unwrap();
     Ok(())
 }
+
+pub fn createlan() {
+    println!("Creating lan server..");
+    create(&ServerType::LOCAL).expect("server didn't create, WTF!?");
+    println!("LAN Server created and listening!");
+}
+
 
 pub fn createwan() {
     println!("Created server at *LAN IP HERE*");

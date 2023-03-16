@@ -6,6 +6,8 @@ use player::player_module;
 use sdl_degreeproject::constvalues;
 use sdl_degreeproject::datatypes::vector::Vector2;
 use sdl_degreeproject::networking::{client, server};
+use serde::Serialize;
+use serde::ser::SerializeStruct;
 use self::objects::object_module::Objects;
 use self::player::player_module::Player;
 use self::render::render_text;
@@ -57,7 +59,7 @@ pub(crate) fn run() -> Result<(), String> {
 
     if args.contains(&String::from("connect")) {
         let res = args.binary_search(&String::from("connect")).unwrap();
-        netclient.connect(args.get(res).unwrap().to_string());
+        netclient.connect(args.get(res + 1).unwrap().to_string());
     } else {
         netclient.connect("127.0.0.1".to_string());
     }
@@ -80,7 +82,7 @@ pub(crate) fn run() -> Result<(), String> {
 
     let texture_creator = canvas.texture_creator();
 
-    let mut path = Path::new(env!("CARGO_MANIFEST_DIR")).to_owned();
+    let mut path = std::env::current_dir().unwrap().to_owned();
     path.push("fontaa.ttf");
     let ttf_context = sdl2::ttf::init().unwrap();
     let mut font = ttf_context.load_font(path,32).unwrap();

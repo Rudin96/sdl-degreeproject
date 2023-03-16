@@ -2,11 +2,17 @@ use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr, ToSocketAddrs}, thread,
 
 use crate::{constvalues::{self, PORT_NUMBER}, datatypes::vector::Vector2};
 
+pub enum ConnectionState {
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTED
+}
 
 pub struct Client {
     socket: UdpSocket,
     ipaddress: String,
     pub id: i8,
+    pub connstate: ConnectionState
 }
 
 impl Client {
@@ -62,6 +68,6 @@ impl Client {
 pub fn init() -> Client {
     let sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0);
     let socket = UdpSocket::bind(sock_addr).expect("Error binding to socket");
-    let newclient = Client { socket: socket.try_clone().unwrap(), ipaddress: Ipv4Addr::UNSPECIFIED.to_string() , id: 0 };
+    let newclient = Client { socket: socket.try_clone().unwrap(), ipaddress: Ipv4Addr::UNSPECIFIED.to_string() , id: 0, connstate: ConnectionState::DISCONNECTED };
     newclient
 }
