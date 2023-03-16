@@ -4,7 +4,7 @@
 pub mod player_module{
 
 
-    use sdl2::{rect::{Rect, Point}, render::Texture, pixels::Color};
+    use sdl2::{rect::{Rect, Point}, render::Texture};
 
     //#[derive(Debug)]
     pub struct Player<'a>
@@ -18,12 +18,6 @@ pub mod player_module{
         pub text_texture: Option<Texture<'a>>
     }
 
-    pub struct PlayerText<'a>
-    {
-        pub text_texture: Texture<'a>,
-        pub text: String,
-        pub text_color: Color
-    }
 
     // impl Default for Player<'_>{
     //     fn default() -> Self {
@@ -40,11 +34,13 @@ pub mod player_module{
         
         pub m1_is_down: bool,
         pub m2_is_down: bool,
+        
+        pub tab: bool,
     }
 
     impl Default for PlayerInput {
         fn default() -> Self {
-            Self { left_is_held_down: false, right_is_held_down: false, up_is_held_down: false, down_is_held_down: false, m1_is_down: false, m2_is_down: false }
+            Self { left_is_held_down: false, right_is_held_down: false, up_is_held_down: false, down_is_held_down: false, m1_is_down: false, m2_is_down: false, tab: true }
         }
     }
 }

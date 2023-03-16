@@ -34,6 +34,9 @@ fn create(_servertype: &ServerType) -> std::io::Result<()> {
                 playerpositions.insert(client_id, Vector2 { x: 0, y: 0 });
                 client_id += 1;
                 socket.send_to(&filled_buffer, from).expect("Couldnt send connectionpacket back to client");
+                for c in &connectedclients {
+                    socket.send_to(serde_json::to_string(&playerpositions).unwrap().as_bytes(), c.0).unwrap();
+                }
                 continue;
             }
 
