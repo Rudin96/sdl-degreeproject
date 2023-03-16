@@ -10,7 +10,6 @@ use self::objects::object_module::Objects;
 use self::player::player_module::Player;
 use self::render::render_text;
 
-use render::render_player;
 use render::render_players;
 
 use objects::object_module::place_furniture;
@@ -33,7 +32,8 @@ pub struct Tile
     rect: Rect,
     occupied: bool,
     furniture: Option<Objects>,
-    position: Point
+    position: Point,
+    highlight: bool
 }
 
 const SCREEN_WIDTH: u32 = 1000;
@@ -84,8 +84,6 @@ pub(crate) fn run() -> Result<(), String> {
     let catman = texture_creator.load_texture("catman.png")?;
 
 
-    //let mut player = player_module::Player::default();
-
     let mut player = Player
     {
         position: Point::new(0, 0), 
@@ -96,54 +94,14 @@ pub(crate) fn run() -> Result<(), String> {
         text_texture: None    
     };
 
-    let mut players_positions: HashMap<u8,Point> = HashMap::new();
-
-
-
-    // for i in    {
-        
-    //     let mut player = Player
-    //     {
-    //         position: Point::new(0, 0), 
-    //         sprite: Rect::new(0,0,32,32), 
-    //         speed: 5,
-    //         player_texture: texture,
-    //         player_id: 0,
-    //         text_texture: None    
-    //     };
-
-
-    //     players_positions.insert(0, player.position);
-
-
-    // }
-
-
 
     let mut player_input = player_module::PlayerInput::default();
+
+    let mut mouse_position = Point::new(0,0);
+
+
     canvas.set_draw_color(Color::RGB(0, 255, 255));
 
-    
-
-
-
-    //Text and Text Surface
-
-    // for i in player_vec {
-    //     let player_text = "Player ".to_owned() + &player.player_id.to_string();
-    //     let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
-    //     let binding = canvas.texture_creator();
-    //     let text_texture = binding.create_texture_from_surface(&text_surface).unwrap();
-
-    //     player.player_texture = text_texture;
-    // }
-
-
-    
-    
-    
-    
-    
     let mut event_pump = sdl_context.event_pump().unwrap();
     
     let rows =  GRID_HEIGHT;
@@ -216,6 +174,10 @@ pub(crate) fn run() -> Result<(), String> {
         if player_input.down_is_held_down {
             player.position = player.position.offset(0, player.speed);
         }
+
+        mouse_position = (event_pump.mouse_state().x(),event_pump.mouse_state().y()).into();
+
+
         
         //Send local position to server
         if player.position != prevPlayerPos {
@@ -243,10 +205,13 @@ pub(crate) fn run() -> Result<(), String> {
 
         sharedbuffer.lock().unwrap().clear();
 
-        draw_tiles(&mut _new_grid, &mut canvas);
+        check_tile(&mut _new_grid, &mouse_position, &player_input);
+        draw_tiles(&mut _new_grid, &mut canvas,&mut sprite_rect, &mut tile_rect);
+
         //check_tile(&mut _new_grid, &event_pump, &mut canvas, &player_input, &mut sprite_rect, &mut tile_rect);
         
         
+        //Draw objects
         canvas.set_draw_color(Color::RGB(0, 255, 0));
         for piece in &_new_grid {
 
@@ -256,13 +221,17 @@ pub(crate) fn run() -> Result<(), String> {
             }
         }
 
-        
-        //TODO render players foreach networkposition
-        //Render Player
 
         for playerclient in &playerpositions {
 
-            render_players(Color::RGB(i, 64, 255 - i),&mut canvas,playerclient,&player)
+            render_players(Color::RGB(i, 64, 255 - i),&mut canvas,playerclient,&player);
+
+            let player_text = "Player ".to_owned() + &playerclient.0.to_string();
+            let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
+            let binding = canvas.texture_creator();
+            let text_texture = binding.create_texture_from_surface(&text_surface).unwrap();
+
+            render_text(&mut canvas, &text_texture, playerclient).unwrap();
 
             //render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&font).unwrap();
         }
@@ -305,61 +274,99 @@ pub(crate) fn run() -> Result<(), String> {
 }
 
 
-fn draw_tiles(_new_grid: &mut Vec<Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>){
+fn draw_tiles(_new_grid: &mut Vec<Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,sprite_rect: &mut Rect,tile_rect: &mut Rect) {
     
     for tile in  _new_grid{
-        canvas.set_draw_color(Color::RGB(0, 255, 0));
-        canvas.draw_rect(tile.rect).unwrap();    
-    }
+        if tile.highlight {
+            canvas.set_draw_color(Color::RGB(0, 255, 0));
+            canvas.fill_rect(tile.rect).unwrap();
+        }
 
+        else if !tile.highlight {
+            canvas.set_draw_color(Color::RGB(0, 0, 0));
+            canvas.draw_rect(tile.rect).unwrap();  
+        }
+
+        if tile.occupied {
+            place_furniture(canvas, tile, sprite_rect, tile_rect)
+        }
+    }
 }
 
-fn check_tile(_new_grid: &mut Vec<Tile>, 
-    event_pump: &sdl2::EventPump, 
-    canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, 
-    player_input: &player_module::PlayerInput, 
-    sprite_rect: &mut Rect, 
-    tile_rect: &mut Rect) 
+// fn check_tile(_new_grid: &mut Vec<Tile>, 
+//     event_pump: &sdl2::EventPump, 
+//     canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, 
+//     player_input: &player_module::PlayerInput, 
+//     sprite_rect: &mut Rect, 
+//     tile_rect: &mut Rect) 
+//     {
+//     for tile in  _new_grid{
+//         let _x = event_pump.mouse_state().x();
+//         let _y = event_pump.mouse_state().y();
+
+//         if  _x < (tile.rect.x + tile.rect.width() as i32) &&
+//             _x > tile.rect.x &&
+//             _y < (tile.rect.y + tile.rect.height() as i32) &&
+//             _y > tile.rect.y
+//             {
+//                 canvas.set_draw_color(Color::RGB(0, 255, 0));
+//                 canvas.draw_rect(tile.rect).unwrap();
+
+//                 if player_input.m1_is_down && !tile.occupied{
+
+//                     place_furniture(canvas, tile, sprite_rect, tile_rect);
+
+//                 }
+
+//                 if player_input.m2_is_down && tile.occupied{
+
+//                     tile.occupied = false;
+//                     tile.furniture = None;
+
+                
+    
+//                     //Get the rect location
+//                     //Draw a new rect based on the location
+//                     //Make sure its drawn in the middle of the current rect
+//                     //postition + width to make sure its properly placed
+//                     //Tag current one as occupied?
+
+//                 }
+//             }
+//         else {
+//             canvas.set_draw_color(Color::RGB(255, 0, 0));
+//             canvas.draw_rect(tile.rect).unwrap();
+//         }
+//     }
+// }
+
+fn check_tile(_new_grid: &mut Vec<Tile>,
+    mouse_position: &Point, 
+    player_input: &player_module::PlayerInput) 
     {
     for tile in  _new_grid{
-        let _x = event_pump.mouse_state().x();
-        let _y = event_pump.mouse_state().y();
-
-        if  _x < (tile.rect.x + tile.rect.width() as i32) &&
-            _x > tile.rect.x &&
-            _y < (tile.rect.y + tile.rect.height() as i32) &&
-            _y > tile.rect.y
-            {
-                canvas.set_draw_color(Color::RGB(0, 255, 0));
-                canvas.draw_rect(tile.rect).unwrap();
+        
+        if (mouse_position.x / 100) == tile.position.x && (mouse_position.y / 100) == tile.position.y {
+                tile.highlight = true;
 
                 if player_input.m1_is_down && !tile.occupied{
-
-                    place_furniture(canvas, tile, sprite_rect, tile_rect);
-
+                    tile.occupied = true;
                 }
 
                 if player_input.m2_is_down && tile.occupied{
 
                     tile.occupied = false;
                     tile.furniture = None;
-
-                
-    
-                    //Get the rect location
-                    //Draw a new rect based on the location
-                    //Make sure its drawn in the middle of the current rect
-                    //postition + width to make sure its properly placed
-                    //Tag current one as occupied?
-
                 }
             }
         else {
-            canvas.set_draw_color(Color::RGB(255, 0, 0));
-            canvas.draw_rect(tile.rect).unwrap();
-        }
+                tile.highlight = false;
+            }
+        
     }
+
 }
+
 
 
 
@@ -370,14 +377,13 @@ fn create_grid(rows: &i32, columns: &i32, _new_grid: &mut Vec<Tile>) {
         let col = i % columns;
 
         let tile = Rect::new(100 * row as i32, 100 * col as i32, 100, 100);
-    
-    
 
         let new_tile = Tile {
             rect: tile,
             occupied: false,
             furniture: None,
-            position: Point::new(row,col)
+            position: Point::new(row,col),
+            highlight: false
         };
         _new_grid.push(new_tile)
     }
