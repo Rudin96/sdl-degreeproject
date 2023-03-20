@@ -1,4 +1,4 @@
-use sdl2::{render::{WindowCanvas, Texture}, pixels::Color, rect::{Point, Rect}, ttf::Font};
+use sdl2::{render::{WindowCanvas, Texture}, pixels::Color, rect::{Point, Rect}};
 use sdl_degreeproject::datatypes::vector::Vector2;
 
 use crate::engine::player_module::Player;

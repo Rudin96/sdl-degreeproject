@@ -1,6 +1,6 @@
 
 pub mod object_module{
-    use sdl2::{pixels::Color, rect::Rect};
+    use sdl2::rect::Rect;
     use crate::engine::Tile;
 
 pub struct Objects
