@@ -1,16 +1,15 @@
 use sdl2::{render::{WindowCanvas, Texture}, pixels::Color, rect::{Point, Rect}, ttf::Font};
-use sdl_degreeproject::datatypes::vector::Vector2;
 
 use crate::engine::player_module::Player;
 
-pub fn render_players(color: Color,canvas: &mut WindowCanvas,playerclient: (&u8,&Vector2),player: &Player)
+pub fn render_players(color: Color,canvas: &mut WindowCanvas,playerclient: (&u8,&(i32, i32)),player: &Player)
 {
 
     canvas.set_draw_color(color);
 
     let (width, height) = canvas.output_size().unwrap();
 
-    let playpos = Point::new(playerclient.1.x,playerclient.1.y);
+    let playpos = Point::new(playerclient.1.0,playerclient.1.1);
 
     let screen_position = playpos + Point::new(width as i32/2, height as i32 / 2);
     let screen_rect = Rect::from_center(screen_position, player.sprite.width(), player.sprite.height());
@@ -58,13 +57,13 @@ pub fn render_players(color: Color,canvas: &mut WindowCanvas,playerclient: (&u8,
 //     Ok(())
 // }
 
-pub fn render_text(canvas: &mut WindowCanvas, text_texture: &Texture,playerclient: (&u8,&Vector2)) -> Result<(), String>{ 
+pub fn render_text(canvas: &mut WindowCanvas, text_texture: &Texture,playerclient: (&u8,&(i32, i32))) -> Result<(), String>{ 
 
     canvas.set_draw_color(Color::RGB(255, 0, 0));
 
     let (width, height) = canvas.output_size()?;
 
-    let playpos = Point::new(playerclient.1.x,playerclient.1.y);
+    let playpos = Point::new(playerclient.1.0,playerclient.1.1);
 
     let screen_position = playpos + Point::new(width as i32/2, (height as i32 / 2) - 32) ;
     let screen_rect = Rect::from_center(screen_position, text_texture.query().width, text_texture.query().height);

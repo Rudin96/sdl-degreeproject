@@ -1,9 +1,46 @@
-use std::{net::{UdpSocket, Ipv4Addr, SocketAddr}, thread, collections::HashMap};
+use std::{net::{UdpSocket, Ipv4Addr, SocketAddr, SocketAddrV4}, thread, collections::HashMap, sync::{Arc, Mutex, mpsc::{channel, Receiver, Sender}}};
+use datetime::{LocalDate, Month, DatePiece, LocalDateTime, LocalTime};
 
-use crate::{constvalues::{BUF_SIZE, PORT_NUMBER}, datatypes::vector::Vector2};
+use crate::{constvalues::{BUF_SIZE, PORT_NUMBER}};
 
 pub struct Server {
+    netbuffer: (Sender<Vec<u8>>, Receiver<Vec<u8>>),
+    connectedclients: Arc<Mutex<HashMap<SocketAddr, LocalDateTime>>>
+}
 
+impl Server {
+    fn beginlisten(&self) {
+        //Spawn listen thread
+        let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket");
+        let netsenderclone = self.netbuffer.0.clone();
+        let connclientsclone = self.connectedclients.clone();
+        println!("Server: Starting listener thread..");
+        thread::spawn(move || {
+            loop {
+                let mut buf = [0; 1024];
+                let (bytes, from) = socket.recv_from(&mut buf).unwrap();
+                let mut connclients = connclientsclone.lock().unwrap();
+                println!("Server: Received packet from {from}");
+                connclients.insert(from, LocalDateTime::now());
+                let filled_buf = &mut buf[..bytes];
+                netsenderclone.send(filled_buf.to_vec()).unwrap();
+            }
+        });
+    }
+    
+    fn beginloopingsend(&self) {
+        let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER + 1))).expect("Couldnt create listener");
+        println!("Server: Starting sender..");
+        loop {
+            let netbuf = self.netbuffer.1.recv().unwrap();
+            let connclients = self.connectedclients.lock().unwrap();
+            println!("Connected clients: {}", connclients.len());
+            for (k, v) in connclients.iter() {
+                println!("Server: Sending packet: {:?} to a {} here", netbuf, k);
+                socket.send_to(&netbuf, k).unwrap();
+            }
+        }
+    }
 }
 
 pub enum ServerType {
@@ -12,63 +49,23 @@ pub enum ServerType {
     OFFLINE
 }
 
-fn create(_servertype: &ServerType) -> std::io::Result<()> {
-    let mut connectedclients = HashMap::new();
-    let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
-    let mut client_id = 0;
-    let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket");
-    
-    
-    thread::spawn(|| {
-        
-    });
-    
-    thread::spawn(move || {
-        loop {
-            // let mut buf = [0; BUF_SIZE];
-            let mut buf: Vec<u8> = Vec::new();
-            println!("Server read timeout is {:?}", socket.read_timeout().unwrap());
-            let (number_of_bytes, from) = socket.recv_from(&mut buf).expect("Error receiving data");
-            
-            let filled_buffer = &mut buf[..number_of_bytes];
-            
-            //Check if connectionerequest packet
-            if filled_buffer[0] == 26 {
-                let _ = &connectedclients.insert(from, client_id);
-                filled_buffer[1] = client_id;
-                println!("Sending {} to client: {}", client_id, from);
-                playerpositions.insert(client_id, Vector2 { x: 0, y: 0 });
-                client_id += 1;
-                socket.send_to(&filled_buffer, from).expect("Couldnt send connectionpacket back to client");
-                for c in &connectedclients {
-                    socket.send_to(serde_json::to_string(&playerpositions).unwrap().as_bytes(), c.0).unwrap();
-                }
-                continue;
-            }
-
-            //TODO check incoming data
-            // println!("received pos string {} from client {}", String::from_utf8_lossy(&filled_buffer), from.to_string());
-            let playerpos_des: Vector2 = serde_json::from_slice(&filled_buffer).unwrap();
-            playerpositions.insert(*connectedclients.get(&from).unwrap(), playerpos_des);
-            for c in &connectedclients {
-                socket.send_to(serde_json::to_string(&playerpositions).unwrap().as_bytes(), c.0).unwrap();
-            }
-        }
-        });
-        // handle.join().unwrap();
-    Ok(())
+fn create(_servertype: &ServerType) -> Server {
+    let mut server = Server {connectedclients: Arc::new(Mutex::new(HashMap::new())), netbuffer: channel()};
+    server.beginlisten();
+    server.beginloopingsend();
+    server
 }
 
 pub fn createlan() {
     println!("Creating lan server..");
-    create(&ServerType::LOCAL).expect("server didn't create, WTF!?");
+    create(&ServerType::LOCAL);
     println!("LAN Server created and listening!");
 }
 
 
 pub fn createwan() {
     println!("Created server at *LAN IP HERE*");
-    create(&ServerType::WAN).expect("server didn't create, WTF!?");
+    create(&ServerType::WAN);
 }
 
 pub fn createoffline() {

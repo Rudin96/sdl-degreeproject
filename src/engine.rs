@@ -4,7 +4,6 @@ mod objects;
 
 use player::player_module;
 use sdl_degreeproject::constvalues;
-use sdl_degreeproject::datatypes::vector::Vector2;
 use sdl_degreeproject::networking::{client, server};
 use serde::Serialize;
 use serde::ser::SerializeStruct;
@@ -49,6 +48,14 @@ pub(crate) fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let sdl_context = sdl2::init()?;
     
+    if args.contains(&String::from("dserver"))
+    {
+        server::createlan();
+        loop {
+            
+        }
+    }
+
     //Read network info(clientid, position) to shared buffer
     if args.contains(&String::from("server"))
     {
@@ -65,11 +72,7 @@ pub(crate) fn run() -> Result<(), String> {
         netclient.connect("127.0.0.1".to_string());
     }
 
-    netclient.recieve(move |netbuffer| {
-        
-        let mut buffer = netbff.lock().unwrap();
-        buffer.push(netbuffer.to_vec());
-    });
+    // netclient.recieve();
 
     let video_subsystem = sdl_context.video()?;
     let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).unwrap();
@@ -149,7 +152,7 @@ pub(crate) fn run() -> Result<(), String> {
     
     let mut prevPlayerPos = player.position;
 
-    let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
+    let mut playerpositions: HashMap<u8, (i32, i32)> = HashMap::new();
 
     'running: loop {
         
@@ -205,7 +208,7 @@ pub(crate) fn run() -> Result<(), String> {
         
         //Send local position to server
         if player.position != prevPlayerPos {
-            netclient.sendpos(Vector2 {x: player.position.x, y: player.position.y});
+            netclient.writetostream((player.position.x, player.position.y));
             prevPlayerPos = player.position;
         }
 
