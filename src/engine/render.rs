@@ -6,7 +6,7 @@ use crate::engine::player_module::Player;
 pub fn render_players(color: Color,canvas: &mut WindowCanvas,playerclient: (&u8,&Vector2),player: &mut Player)
 {
     
-    canvas.set_draw_color(color);
+    //canvas.set_draw_color(color);
 
     let (width, height) = canvas.output_size().unwrap();
 

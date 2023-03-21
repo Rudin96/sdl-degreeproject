@@ -4,7 +4,7 @@ mod objects;
 
 use player::player_module;
 use sdl2::libc::_IOFBF;
-use sdl2::sys::SDL_QueryTexture;
+use sdl2::sys::{SDL_GetPerformanceCounter, SDL_GetPerformanceFrequency, SDL_GetTicks};
 use sdl_degreeproject::datatypes::vector::Vector2;
 use sdl_degreeproject::networking::{client, server};
 use self::objects::object_module::{Objects, allocate_object};
@@ -65,6 +65,9 @@ pub(crate) fn run() -> Result<(), String> {
         buffer.push(netbuffer.to_vec());
     });
 
+
+
+
     let video_subsystem = sdl_context.video()?;
     let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).unwrap();
 
@@ -89,29 +92,15 @@ pub(crate) fn run() -> Result<(), String> {
     let catman = texture_creator.load_texture("catman.png")?;
     let players = texture_creator.load_texture("characters.png")?;
 
-    ;
-    
-    let img_src = Rect::new(0,0,16,32);
 
     let mut img_hash: HashMap<u8,Rect> = HashMap::new();
-
-    
-
-    for i in 0..players.query().height / 64 {
-        
-        let img_src = Rect::new(0,32*i as i32 ,16,32);
-
-        img_hash.insert(i as u8, img_src);
-    }
-
+    create_player_images(&players, &mut img_hash);
 
     let mut player = Player
     {
         position: Point::new(0, 0), 
-        //sprite: Rect::new(0,0,32,32), 
-        sprite: img_src, 
-        speed: 5,
-        //player_texture: texture,
+        sprite: Rect::new(0,0,16,32), 
+        speed: 1,
         player_texture: players,
         player_id: 0,
         text_texture: None    
@@ -119,7 +108,6 @@ pub(crate) fn run() -> Result<(), String> {
 
 
     let mut player_input = player_module::PlayerInput::default();
-
     let mut mouse_position = Point::new(0,0);
 
 
@@ -137,22 +125,43 @@ pub(crate) fn run() -> Result<(), String> {
     
     create_hash_grid(&rows, &columns, &mut grid_map);
 
-    // Number of frames to average over
-    let num_frames = 60;
-    // Array to store frame times
-    let mut frame_times: [u32; 60] = [0; 60];
-    // Index for frame times array
-    let mut frame_index = 0;
+   
 
-    let mut i = 0;
     
     let mut prevPlayerPos = player.position;
 
     let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
 
+    const FRAME_VALUES: usize = 10;
+    let mut frame_times: [u32; FRAME_VALUES] = [0; FRAME_VALUES];
+    let mut frame_time_last: u32 = unsafe { SDL_GetTicks() };
+    let mut frame_count: usize = 0;
+
+
     'running: loop {
-        
-        let start_time = unsafe { sdl2::sys::SDL_GetTicks() };
+
+
+        let mut current_ticks = unsafe { SDL_GetTicks() };
+        frame_times[frame_count % FRAME_VALUES] = current_ticks - frame_time_last;
+        frame_time_last = current_ticks;
+        let mut count: usize;
+        if frame_count < FRAME_VALUES {
+            count = frame_count;
+        }    
+        else {
+        count = FRAME_VALUES;
+        } 
+        frame_count += 1;
+
+        let mut frame_time_average: f32 = 0.0;
+
+        for i in 0..count {
+            frame_time_average += frame_times[i] as f32;
+        }
+        frame_time_average /= count as f32;
+
+        println!("{}",frame_time_average / 1000.0);
+
 
 
         // i = (i + 1) % 255;
@@ -185,18 +194,24 @@ pub(crate) fn run() -> Result<(), String> {
         }
 
 
+        let diagonal_speed = player.speed as f32 / (2.0 as f32).sqrt();
+
+
         if player_input.left_is_held_down {
-            player.position = player.position.offset(-player.speed, 0);
+            player.position = player.position.offset(-player.speed * frame_time_average as i32, 0)
         } 
         if player_input.right_is_held_down {
-            player.position = player.position.offset(player.speed, 0);
+            player.position = player.position.offset(player.speed * frame_time_average as i32, 0);
         } 
         if player_input.up_is_held_down {
-            player.position = player.position.offset(0, -player.speed);
+            player.position = player.position.offset(0, -player.speed * frame_time_average as i32);
         }
         if player_input.down_is_held_down {
-            player.position = player.position.offset(0, player.speed);
+            player.position = player.position.offset(0, player.speed * frame_time_average as i32);
         }
+        
+        
+
 
         mouse_position = (event_pump.mouse_state().x(),event_pump.mouse_state().y()).into();
 
@@ -250,7 +265,7 @@ pub(crate) fn run() -> Result<(), String> {
 
             player.sprite = img_hash[playerclient.0];
 
-            render_players(Color::RGB(i, 64, 255 - i),&mut canvas,playerclient,&mut player);
+            render_players(Color::RED,&mut canvas,playerclient,&mut player);
 
             let player_text = "Player ".to_owned() + &playerclient.0.to_string();
             let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
@@ -266,37 +281,21 @@ pub(crate) fn run() -> Result<(), String> {
         canvas.present();
 
         
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
-
-        // Get time after rendering frame
-        let end_time = unsafe { sdl2::sys::SDL_GetTicks() };
-        
-        // Calculate time taken to render frame
-        let frame_time = end_time - start_time;
-        
-        // Store frame time in array and increment index
-        frame_times[frame_index] = frame_time;
-        frame_index += 1;
-
-        if frame_index >= num_frames {
-            // Calculate average FPS over num_frames frames
-            let total_frame_time: u32 = frame_times.iter().sum();
-            let avg_frame_time: f64 = (total_frame_time as f64) / (num_frames as f64);
-            let avg_fps: f64 = 1000.0 / avg_frame_time;
-
-            println!("Average FPS: {}", avg_fps);
-
-            // Reset index and clear array
-            frame_index = 0;
-            for i in &mut frame_times {
-                *i=0;
-            }
-       }
+        //::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         
     }
 
     Ok(())
     // ...
+}
+
+fn create_player_images(players: &sdl2::render::Texture, img_hash: &mut HashMap<u8, Rect>) {
+    for i in 0..players.query().height / 64 {
+    
+        let img_src = Rect::new(0,32*i as i32 ,16,32);
+
+        img_hash.insert(i as u8, img_src);
+    }
 }
 
 fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,tile_rect: &mut Rect) {
