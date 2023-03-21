@@ -3,6 +3,8 @@ mod player;
 mod objects;
 
 use player::player_module;
+use sdl2::libc::_IOFBF;
+use sdl2::sys::SDL_QueryTexture;
 use sdl_degreeproject::datatypes::vector::Vector2;
 use sdl_degreeproject::networking::{client, server};
 use self::objects::object_module::{Objects, allocate_object};
@@ -85,14 +87,32 @@ pub(crate) fn run() -> Result<(), String> {
 
     let texture = texture_creator.load_texture("face.png")?;
     let catman = texture_creator.load_texture("catman.png")?;
+    let players = texture_creator.load_texture("characters.png")?;
+
+    ;
+    
+    let img_src = Rect::new(0,0,16,32);
+
+    let mut img_hash: HashMap<u8,Rect> = HashMap::new();
+
+    
+
+    for i in 0..players.query().height / 64 {
+        
+        let img_src = Rect::new(0,32*i as i32 ,16,32);
+
+        img_hash.insert(i as u8, img_src);
+    }
 
 
     let mut player = Player
     {
         position: Point::new(0, 0), 
-        sprite: Rect::new(0,0,32,32), 
+        //sprite: Rect::new(0,0,32,32), 
+        sprite: img_src, 
         speed: 5,
-        player_texture: texture,
+        //player_texture: texture,
+        player_texture: players,
         player_id: 0,
         text_texture: None    
     };
@@ -204,29 +224,33 @@ pub(crate) fn run() -> Result<(), String> {
         
         sharedbuffer.lock().unwrap().clear();
 
+
+
         //Allocate and draw grid
         check_hash_tile(&mut grid_map, &mouse_position, &player_input);
         draw_tile_grid(&mut grid_map, &mut canvas, &mut tile_rect);
 
-        
-        
         //Draw objects
         canvas.set_draw_color(Color::RGB(0, 255, 0));
         for piece in &grid_map {
 
             if piece.1.furniture.is_some() && piece.1.occupied {
 
-                match &piece.1.furniture {
-                    Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
-                    _ => () 
-                    }
+                if piece.1.imageid == 0 {
+                    match &piece.1.furniture {
+                        Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
+                        _ => () 
+                        }
+                    } 
                 }
         }
 
 
         for playerclient in &playerpositions {
 
-            render_players(Color::RGB(i, 64, 255 - i),&mut canvas,playerclient,&player);
+            player.sprite = img_hash[playerclient.0];
+
+            render_players(Color::RGB(i, 64, 255 - i),&mut canvas,playerclient,&mut player);
 
             let player_text = "Player ".to_owned() + &playerclient.0.to_string();
             let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
