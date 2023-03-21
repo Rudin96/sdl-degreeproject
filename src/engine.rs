@@ -5,13 +5,11 @@ mod objects;
 use player::player_module;
 use sdl_degreeproject::datatypes::vector::Vector2;
 use sdl_degreeproject::networking::{client, server};
-use self::objects::object_module::Objects;
+use self::objects::object_module::{Objects, allocate_object};
 use self::player::player_module::Player;
 use self::render::render_text;
 
 use render::render_players;
-
-use objects::object_module::place_furniture;
 
 use sdl2::mouse::{MouseButton};
 use std::collections::HashMap;
@@ -113,7 +111,6 @@ pub(crate) fn run() -> Result<(), String> {
     let columns  =  GRID_WIDTH;
 
     let mut tile_rect = Rect::new(0,0,0,0);
-    let mut sprite_rect = Rect::new(0,0,0,0);
 
 
     let mut grid_map: HashMap<(i32,i32),Tile> = HashMap::new();
@@ -207,9 +204,9 @@ pub(crate) fn run() -> Result<(), String> {
         
         sharedbuffer.lock().unwrap().clear();
 
-        
+        //Allocate and draw grid
         check_hash_tile(&mut grid_map, &mouse_position, &player_input);
-        draw_tile_grid(&mut grid_map, &mut canvas,&mut sprite_rect, &mut tile_rect);
+        draw_tile_grid(&mut grid_map, &mut canvas, &mut tile_rect);
 
         
         
@@ -217,10 +214,13 @@ pub(crate) fn run() -> Result<(), String> {
         canvas.set_draw_color(Color::RGB(0, 255, 0));
         for piece in &grid_map {
 
-            match &piece.1.furniture {
-                Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
-                _ => ()
-            }
+            if piece.1.furniture.is_some() && piece.1.occupied {
+
+                match &piece.1.furniture {
+                    Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
+                    _ => () 
+                    }
+                }
         }
 
 
@@ -275,7 +275,7 @@ pub(crate) fn run() -> Result<(), String> {
     // ...
 }
 
-fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,sprite_rect: &mut Rect,tile_rect: &mut Rect) {
+fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,tile_rect: &mut Rect) {
     
     for tile in  _tile_map{
         if tile.1.highlight {
@@ -287,10 +287,6 @@ fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::ren
             canvas.set_draw_color(Color::RGB(255, 255, 255));
             canvas.draw_rect(tile.1.rect).unwrap();  
         }
-
-        if tile.1.occupied {
-            place_furniture(canvas, tile.1, sprite_rect, tile_rect)
-        }
     }
 }
 
@@ -299,28 +295,49 @@ fn check_hash_tile(_tile_map: &mut HashMap<(i32,i32),Tile>,
     player_input: &player_module::PlayerInput) 
     {
 
-    for tile in _tile_map.values_mut() {
-        tile.highlight = false;
-    }
+    let key = &(mouse_position.x / 100,mouse_position.y/ 100);
+    let mut keys_to_modify = Vec::new();
 
-    let value = _tile_map.get_mut(&(mouse_position.x / 100,mouse_position.y/ 100));
-    
-    if let Some(tile) = value {
 
-        tile.highlight = true;
+    for tile in _tile_map.into_iter() {
 
-        if player_input.m1_is_down && !tile.occupied{
-            tile.occupied = true;
+        if tile.1.position.x == key.0 && tile.1.position.y == key.1{
+            tile.1.highlight = true;
+            
+            if player_input.m1_is_down && !tile.1.occupied{
+
+                allocate_object(tile.1);
+
+                if let Some(a) = &tile.1.furniture {
+                    
+                    for i  in -a.object_width+1 ..  a.object_width {
+                        keys_to_modify.push((key.0+i,key.1));
+                    }   
+                }
+            }
+            if player_input.m2_is_down && tile.1.occupied{
+
+                tile.1.occupied = false;
+                tile.1.furniture = None;
+            }
+                   
+        }
+        else {
+        tile.1.highlight = false;    
         }
 
-        if player_input.m2_is_down && tile.occupied{
+    }
 
-            tile.occupied = false;
-            tile.furniture = None;
+    for tile in keys_to_modify {
+        if let Some(a) = _tile_map.get_mut(&tile) {
+            a.occupied = true;
         }
     }
+
 
 }
+
+
 
 fn create_hash_grid(rows: &i32, columns: &i32, _tile_map: &mut HashMap<(i32,i32),Tile>) {
     for i in 0..(rows * columns) {
@@ -341,5 +358,6 @@ fn create_hash_grid(rows: &i32, columns: &i32, _tile_map: &mut HashMap<(i32,i32)
         _tile_map.insert((row,col),new_tile);
     }
 }
+
 
 
