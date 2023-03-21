@@ -25,29 +25,37 @@ fn checkifconnectionreq(packet: &[u8]) -> bool {
 }
 
 impl Client {
-    pub fn writetostream(&self, pos: (i32, i32)) {
-        let serstring = serde_json::to_string(&pos).unwrap();
-        self.buffer.0.send(serstring.into_bytes()).unwrap();
+    pub fn writepoint(&self, pos: (i32, i32)) {
+        let mut buf = Vec::<u8>::new();
+        let c: u8 = 76;
+        buf.push(c);
+        let pb1 = pos.0.to_ne_bytes();
+        let pb2 = pos.1.to_ne_bytes();
+        buf.append(&mut pb1.to_vec());
+        buf.append(&mut pb2.to_vec());
+        println!("CLIENT: Pos buffer looks like: {:?}", buf);
+        self.buffer.0.send(buf).unwrap();
     }
     
     fn sendconnectionrequest(&self, ipaddress: String) {
-        let mut connectstream = [0; 4];
-        connectstream[0] = 26;
+        let socketclone = self.socket.try_clone().unwrap();
+        println!("{ipaddress}");
         let connection_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::from_str(&ipaddress).unwrap()), PORT_NUMBER);
         println!("Sending connection request");
-        self.socket.connect(&connection_addr).expect("Couldnt connect to address!");
-        self.socket.send_to(&connectstream, &connection_addr).expect("Connection request send error");
+        socketclone.connect(&connection_addr).expect("Couldnt connect to address!");
+        let buf = self.buffer.1.recv().unwrap();
+        socketclone.send_to(&buf, &connection_addr).expect("Connection request send error");
     }
 
     fn beginsendtoserver(&self) {
-        // loop {
-        //     self.socket.send_to(&r, self.ipaddress.as_str()).unwrap();
-        // }
+        loop {
+            let buf = self.buffer.1.recv().unwrap();
+            self.socket.send_to(&buf, self.ipaddress.as_str()).unwrap();
+        }
     }
 
     pub fn recieve(&self) {
         let selfsocket = self.socket.try_clone().unwrap();
-        let netbuf = self.buffer.0.clone();
         thread::spawn(move || {
             loop {
                 let mut buf = vec![0; 1024];
@@ -58,15 +66,13 @@ impl Client {
                 if checkifconnectionreq(&filled_buf) {
                     println!("Connection successful");
                 }
-                netbuf.send(filled_buf.to_vec()).unwrap();
             }
         });
     }
     
     pub fn connect(&self, ipaddress: String) {
+        // self.sendconnectionrequest(ipaddress.to_string());
         self.recieve();
-        self.sendconnectionrequest(ipaddress.to_string());
-        self.beginsendtoserver();
     }
 }
 

@@ -1,45 +1,45 @@
-use std::{net::{UdpSocket, Ipv4Addr, SocketAddr, SocketAddrV4}, thread, collections::HashMap, sync::{Arc, Mutex, mpsc::{channel, Receiver, Sender}}};
+use std::{net::{UdpSocket, Ipv4Addr, SocketAddr, SocketAddrV4}, thread, collections::HashMap, sync::{Arc, Mutex, mpsc::{channel, Receiver, Sender}}, time::Duration};
 use datetime::{LocalDate, Month, DatePiece, LocalDateTime, LocalTime};
 
-use crate::{constvalues::{BUF_SIZE, PORT_NUMBER}};
+use crate::{constvalues::{BUF_SIZE, PORT_NUMBER, SERVER_TICK_RATE}};
 
 pub struct Server {
     netbuffer: (Sender<Vec<u8>>, Receiver<Vec<u8>>),
-    connectedclients: Arc<Mutex<HashMap<SocketAddr, LocalDateTime>>>
+    connectedclients: Arc<Mutex<HashMap<SocketAddr, LocalDateTime>>>,
+    socket: UdpSocket
 }
 
 impl Server {
     fn beginlisten(&self) {
         //Spawn listen thread
-        let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket");
-        let netsenderclone = self.netbuffer.0.clone();
-        let connclientsclone = self.connectedclients.clone();
         println!("Server: Starting listener thread..");
+        let socketclone = self.socket.try_clone().unwrap();
+        let conclientsclone = self.connectedclients.clone();
+        let netbufclone = self.netbuffer.0.clone();
         thread::spawn(move || {
             loop {
-                let mut buf = [0; 1024];
-                let (bytes, from) = socket.recv_from(&mut buf).unwrap();
-                let mut connclients = connclientsclone.lock().unwrap();
-                println!("Server: Received packet from {from}");
-                connclients.insert(from, LocalDateTime::now());
-                let filled_buf = &mut buf[..bytes];
-                netsenderclone.send(filled_buf.to_vec()).unwrap();
+                let mut buf = vec![0; 512];
+                let (nob, from) = socketclone.recv_from(&mut buf).unwrap();
+                let filled_buffer = &buf[..nob];
+                println!("Received packet: {:?} from {}", filled_buffer, from);
+                conclientsclone.lock().unwrap().insert(from, LocalDateTime::now());
+                netbufclone.send(filled_buffer.to_vec()).unwrap();
             }
         });
     }
     
     fn beginloopingsend(&self) {
-        let socket = UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER + 1))).expect("Couldnt create listener");
         println!("Server: Starting sender..");
         loop {
-            let netbuf = self.netbuffer.1.recv().unwrap();
-            let connclients = self.connectedclients.lock().unwrap();
-            println!("Connected clients: {}", connclients.len());
-            for (k, v) in connclients.iter() {
-                println!("Server: Sending packet: {:?} to a {} here", netbuf, k);
-                socket.send_to(&netbuf, k).unwrap();
-            }
+            let res = self.netbuffer.1.recv().unwrap();
+            println!("Sending packet {:?} back to clients", res);
         }
+    }
+
+    fn new() -> Server {
+        Server { connectedclients: Arc::new(Mutex::new(HashMap::new())), 
+            netbuffer: channel(), 
+            socket: UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket") }
     }
 }
 
@@ -50,7 +50,7 @@ pub enum ServerType {
 }
 
 fn create(_servertype: &ServerType) -> Server {
-    let mut server = Server {connectedclients: Arc::new(Mutex::new(HashMap::new())), netbuffer: channel()};
+    let server = Server::new();
     server.beginlisten();
     server.beginloopingsend();
     server
