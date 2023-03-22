@@ -20,7 +20,7 @@ impl Server {
                 let mut buf = vec![0; 512];
                 let (nob, from) = socketclone.recv_from(&mut buf).unwrap();
                 let filled_buffer = &buf[..nob];
-                println!("Received packet: {:?} from {}", filled_buffer, from);
+                println!("Server: Received packet: {:?} from {}", filled_buffer, from);
                 conclientsclone.lock().unwrap().insert(from, LocalDateTime::now());
             }
         });
@@ -29,16 +29,15 @@ impl Server {
     fn beginloopingsend(&self) {
         let socketclone = self.socket.try_clone().unwrap();
         let conclientsclone = self.connectedclients.clone();
-        thread::spawn(move || {
-            println!("Server: Starting sender..");
-            let conclients = conclientsclone.lock().unwrap();
-            loop {
-                for c in conclients.iter() {
-                    let buf = Vec::<u8>::new();
-                    socketclone.send_to(&buf, c.0).unwrap();
-                }
+        println!("Server: Starting sender..");
+        let conclients = conclientsclone.lock().unwrap();
+        loop {
+            for c in conclients.iter() {
+                let buf = self.netbuffer.1.try_recv().unwrap();
+                socketclone.send_to(&buf, c.0).unwrap();
             }
-        });
+            // println!("Send loop");
+        }
     }
 
     fn new() -> Server {

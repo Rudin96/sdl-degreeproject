@@ -213,8 +213,8 @@ pub(crate) fn run() -> Result<(), String> {
         
         //Send local position to server
         if player.position != prevPlayerPos {
-            netclient.writepoint((player.position.x, player.position.y));
-            netclient.commitdata();
+            netclient.write(&(player.position.x, player.position.y));
+            // netclient.commitdata();
             prevPlayerPos = player.position;
         }
 

@@ -1,19 +1,16 @@
-pub struct WriteStream {
-
+pub struct Stream {
+    data: Box<u8>,
+    read_ptr: Box<u8>,
+    write_ptr: Box<u8>,
+    end: Box<u8>
 }
 
-pub struct ReadStream {
+impl Stream {
+    pub fn new() -> Stream {
+        Stream {data: Box::new(0), read_ptr: Box::new(0), write_ptr: Box::new(0), end: Box::new(0) }
+    }
 
-}
-
-pub trait Stream {
-    
-}
-
-impl Stream for WriteStream {
-
-}
-
-impl Stream for ReadStream {
-
+    pub fn write<T>(&self, t: T) {
+        
+    }
 }
