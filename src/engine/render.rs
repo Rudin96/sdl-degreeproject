@@ -1,9 +1,9 @@
 use sdl2::{render::{WindowCanvas, Texture}, pixels::Color, rect::{Point, Rect}};
-use sdl_degreeproject::datatypes::vector::Vector2;
+use sdl_degreeproject::datatypes::vector::Custom_Vector2;
 
 use crate::engine::player_module::Player;
 
-pub fn render_players(color: Color,canvas: &mut WindowCanvas,playerclient: (&u8,&Vector2),player: &mut Player)
+pub fn render_players(color: Color,canvas: &mut WindowCanvas,playerclient: (&u8,&Custom_Vector2),player: &mut Player)
 {
     
     //canvas.set_draw_color(color);
@@ -58,7 +58,7 @@ pub fn render_players(color: Color,canvas: &mut WindowCanvas,playerclient: (&u8,
 //     Ok(())
 // }
 
-pub fn render_text(canvas: &mut WindowCanvas, text_texture: &Texture,playerclient: (&u8,&Vector2)) -> Result<(), String>{ 
+pub fn render_text(canvas: &mut WindowCanvas, text_texture: &Texture,playerclient: (&u8,&Custom_Vector2)) -> Result<(), String>{ 
 
     canvas.set_draw_color(Color::RGB(255, 0, 0));
 

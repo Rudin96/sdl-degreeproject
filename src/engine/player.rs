@@ -11,7 +11,7 @@ pub mod player_module{
     {
         pub position: Point,
         pub sprite: Rect,
-        pub speed: i32,
+        pub speed: f32,
         pub player_texture: Texture<'a>,
         pub player_id: i32,
 

@@ -2,10 +2,12 @@ mod render;
 mod player;
 mod objects;
 
+use nalgebra::Vector2;
+
 use player::player_module;
 use sdl2::libc::_IOFBF;
-use sdl2::sys::{SDL_GetPerformanceCounter, SDL_GetPerformanceFrequency, SDL_GetTicks};
-use sdl_degreeproject::datatypes::vector::Vector2;
+use sdl2::sys::{SDL_GetPerformanceCounter, SDL_GetPerformanceFrequency, SDL_GetTicks, SDL_FPoint};
+use sdl_degreeproject::datatypes::vector::Custom_Vector2;
 use sdl_degreeproject::networking::{client, server};
 use self::objects::object_module::{Objects, allocate_object};
 use self::player::player_module::Player;
@@ -100,7 +102,7 @@ pub(crate) fn run() -> Result<(), String> {
     {
         position: Point::new(0, 0), 
         sprite: Rect::new(0,0,16,32), 
-        speed: 1,
+        speed: 0.5,
         player_texture: players,
         player_id: 0,
         text_texture: None    
@@ -130,7 +132,7 @@ pub(crate) fn run() -> Result<(), String> {
     
     let mut prevPlayerPos = player.position;
 
-    let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
+    let mut playerpositions: HashMap<u8, Custom_Vector2> = HashMap::new();
 
     const FRAME_VALUES: usize = 10;
     let mut frame_times: [u32; FRAME_VALUES] = [0; FRAME_VALUES];
@@ -141,10 +143,13 @@ pub(crate) fn run() -> Result<(), String> {
     'running: loop {
 
 
-        let mut current_ticks = unsafe { SDL_GetTicks() };
+        let current_ticks = unsafe { SDL_GetTicks() };
+
         frame_times[frame_count % FRAME_VALUES] = current_ticks - frame_time_last;
+
         frame_time_last = current_ticks;
-        let mut count: usize;
+        
+        let count: usize;
         if frame_count < FRAME_VALUES {
             count = frame_count;
         }    
@@ -160,7 +165,6 @@ pub(crate) fn run() -> Result<(), String> {
         }
         frame_time_average /= count as f32;
 
-        println!("{}",frame_time_average / 1000.0);
 
 
 
@@ -194,32 +198,25 @@ pub(crate) fn run() -> Result<(), String> {
         }
 
 
-        let diagonal_speed = player.speed as f32 / (2.0 as f32).sqrt();
+        let mut a = Vector2::new(0.0,0.0);
+        a = a.normalize();
 
+        check_player_input(&player_input, &mut a);
 
-        if player_input.left_is_held_down {
-            player.position = player.position.offset(-player.speed * frame_time_average as i32, 0)
-        } 
-        if player_input.right_is_held_down {
-            player.position = player.position.offset(player.speed * frame_time_average as i32, 0);
-        } 
-        if player_input.up_is_held_down {
-            player.position = player.position.offset(0, -player.speed * frame_time_average as i32);
-        }
-        if player_input.down_is_held_down {
-            player.position = player.position.offset(0, player.speed * frame_time_average as i32);
-        }
+        a = a.normalize();
         
+        player.position = player.position.offset((-player.speed * a.x * frame_time_average) as i32,(-player.speed * a.y * frame_time_average) as i32);
+
+
+
         
-
-
         mouse_position = (event_pump.mouse_state().x(),event_pump.mouse_state().y()).into();
 
 
         
         //Send local position to server
         if player.position != prevPlayerPos {
-            netclient.sendpos(Vector2 {x: player.position.x, y: player.position.y});
+            netclient.sendpos(Custom_Vector2 {x: player.position.x, y: player.position.y});
             prevPlayerPos = player.position;
         }
 
@@ -287,6 +284,48 @@ pub(crate) fn run() -> Result<(), String> {
 
     Ok(())
     // ...
+}
+
+fn check_player_input(player_input: &player_module::PlayerInput, a: &mut nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>) {
+    match ( player_input.left_is_held_down,
+            player_input.right_is_held_down,
+            player_input.down_is_held_down,
+            player_input.up_is_held_down) {
+    
+        (true,false,true,false) => {//Left Down
+            a.x = 1.0;
+            a.y = -1.0;
+        }
+        (true,false,false,true) => {//Left Up
+            a.x = 1.0;
+            a.y = 1.0;
+        }
+        (false,true,false,true) => {//Right Up
+            a.x = -1.0;
+            a.y = 1.0;
+        }
+        (false,true,true,false) => {//Right Down
+            a.x = -1.0;
+            a.y = -1.0;
+        }
+        (false,false,true,false) => {//Up
+            a.x = 0.0;
+            a.y = -1.0;
+        }
+        (false,false,false,true) => {//Down
+            a.x = 0.0;
+            a.y = 1.0;
+        }
+        (true,false,false,false) => {//Left
+            a.x = 1.0;
+            a.y = 0.0;
+        }
+        (false,true,false,false) => {//Right
+            a.x = -1.0;
+            a.y = 0.0;
+        }
+        _ => {}
+    }
 }
 
 fn create_player_images(players: &sdl2::render::Texture, img_hash: &mut HashMap<u8, Rect>) {

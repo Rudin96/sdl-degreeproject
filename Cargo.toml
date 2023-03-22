@@ -16,3 +16,6 @@ features = ["derive"]
 version = "0.35"
 default-features = false
 features = ["image","ttf"]
+
+[dependencies.nalgebra]
+version = "0.32.2"
