@@ -43,15 +43,14 @@ impl Client {
         let connection_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::from_str(&ipaddress).unwrap()), PORT_NUMBER);
         println!("Sending connection request");
         socketclone.connect(&connection_addr).expect("Couldnt connect to address!");
-        let buf = self.buffer.1.recv().unwrap();
-        socketclone.send_to(&buf, &connection_addr).expect("Connection request send error");
+        let buf = vec![0; 4];
+        self.buffer.0.send(buf).unwrap();
     }
 
-    fn beginsendtoserver(&self) {
-        loop {
-            let buf = self.buffer.1.recv().unwrap();
-            self.socket.send_to(&buf, self.ipaddress.as_str()).unwrap();
-        }
+    pub fn commitdata(&self) {
+        let buf = self.buffer.1.recv().unwrap();
+        println!("CLIENT: Self IP is: {}", self.ipaddress);
+        self.socket.send_to(&buf, self.ipaddress.as_str()).unwrap();
     }
 
     pub fn recieve(&self) {
@@ -70,9 +69,10 @@ impl Client {
         });
     }
     
-    pub fn connect(&self, ipaddress: String) {
-        // self.sendconnectionrequest(ipaddress.to_string());
+    pub fn connect(&mut self, ipaddress: String) {
         self.recieve();
+        self.ipaddress = ipaddress.clone();
+        self.sendconnectionrequest(ipaddress.to_string());
     }
 }
 

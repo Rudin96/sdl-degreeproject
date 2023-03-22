@@ -1,7 +1,7 @@
-use std::{net::{UdpSocket, Ipv4Addr, SocketAddr, SocketAddrV4}, thread, collections::HashMap, sync::{Arc, Mutex, mpsc::{channel, Receiver, Sender}}, time::Duration};
-use datetime::{LocalDate, Month, DatePiece, LocalDateTime, LocalTime};
+use std::{net::{UdpSocket, Ipv4Addr, SocketAddr}, thread, collections::HashMap, sync::{Arc, Mutex, mpsc::{channel, Receiver, Sender}}};
+use datetime::{LocalDateTime};
 
-use crate::{constvalues::{BUF_SIZE, PORT_NUMBER, SERVER_TICK_RATE}};
+use crate::{constvalues::{PORT_NUMBER}};
 
 pub struct Server {
     netbuffer: (Sender<Vec<u8>>, Receiver<Vec<u8>>),
@@ -15,7 +15,6 @@ impl Server {
         println!("Server: Starting listener thread..");
         let socketclone = self.socket.try_clone().unwrap();
         let conclientsclone = self.connectedclients.clone();
-        let netbufclone = self.netbuffer.0.clone();
         thread::spawn(move || {
             loop {
                 let mut buf = vec![0; 512];
@@ -23,17 +22,23 @@ impl Server {
                 let filled_buffer = &buf[..nob];
                 println!("Received packet: {:?} from {}", filled_buffer, from);
                 conclientsclone.lock().unwrap().insert(from, LocalDateTime::now());
-                netbufclone.send(filled_buffer.to_vec()).unwrap();
             }
         });
     }
     
     fn beginloopingsend(&self) {
-        println!("Server: Starting sender..");
-        loop {
-            let res = self.netbuffer.1.recv().unwrap();
-            println!("Sending packet {:?} back to clients", res);
-        }
+        let socketclone = self.socket.try_clone().unwrap();
+        let conclientsclone = self.connectedclients.clone();
+        thread::spawn(move || {
+            println!("Server: Starting sender..");
+            let conclients = conclientsclone.lock().unwrap();
+            loop {
+                for c in conclients.iter() {
+                    let buf = Vec::<u8>::new();
+                    socketclone.send_to(&buf, c.0).unwrap();
+                }
+            }
+        });
     }
 
     fn new() -> Server {

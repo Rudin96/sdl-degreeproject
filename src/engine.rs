@@ -38,8 +38,8 @@ pub struct Tile
     highlight: bool
 }
 
-const SCREEN_WIDTH: u32 = 1000;
-const SCREEN_HEIGHT: u32 = 1000;
+const SCREEN_WIDTH: u32 = 800;
+const SCREEN_HEIGHT: u32 = 800;
 
 const GRID_WIDTH: i32 = (SCREEN_WIDTH / 10) as i32;
 const GRID_HEIGHT: i32 = (SCREEN_HEIGHT / 10) as i32;
@@ -209,6 +209,7 @@ pub(crate) fn run() -> Result<(), String> {
         //Send local position to server
         if player.position != prevPlayerPos {
             netclient.writepoint((player.position.x, player.position.y));
+            netclient.commitdata();
             prevPlayerPos = player.position;
         }
 
