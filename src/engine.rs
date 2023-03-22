@@ -21,7 +21,7 @@ use sdl2::render::{TextureCreator, Texture};
 use sdl2::video::WindowContext;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::{env, vec};
+use std::{env, vec, thread};
 use std::path::Path;
 use std::time::Duration;
 use sdl2::pixels::Color;
@@ -59,7 +59,12 @@ pub(crate) fn run() -> Result<(), String> {
     //Read network info(clientid, position) to shared buffer
     if args.contains(&String::from("server"))
     {
-        server::createlan();
+        thread::spawn(|| {
+            server::createlan();
+            loop {
+                
+            }
+        });
     }
     let sharedbuffer = Arc::new(Mutex::new(Vec::<Vec::<u8>>::new()));
     let netbff = sharedbuffer.clone();

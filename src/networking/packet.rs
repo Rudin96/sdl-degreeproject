@@ -18,3 +18,8 @@ pub struct ConnectionPacket {
 pub trait Write {
     fn WriteToStream<T>(val: &T, buffer: &Buffer);
 }
+
+pub struct Schema {
+    player: Player,
+
+}

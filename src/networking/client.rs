@@ -37,7 +37,7 @@ impl Client {
         self.buffer.0.send(buf).unwrap();
     }
     
-    fn sendconnectionrequest(&self, ipaddress: String) {
+    fn sendconnectionrequest(&mut self, ipaddress: String) {
         let socketclone = self.socket.try_clone().unwrap();
         println!("{ipaddress}");
         let connection_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::from_str(&ipaddress).unwrap()), PORT_NUMBER);
@@ -45,6 +45,7 @@ impl Client {
         socketclone.connect(&connection_addr).expect("Couldnt connect to address!");
         let buf = vec![0; 4];
         self.buffer.0.send(buf).unwrap();
+        self.ipaddress.push_str(format!(":{}", PORT_NUMBER).as_str());
     }
 
     pub fn commitdata(&self) {
