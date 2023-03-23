@@ -28,8 +28,13 @@ fn checkifconnectionreq(packet: &[u8]) -> bool {
 }
 
 impl Client {
-    pub fn write<T>(&self, data: &T) {
+    pub fn write<T>(&mut self, data: &T) {
         self.stream.write(data);
+        println!("Writing data to stream");
+    }
+
+    pub fn read<T: std::default::Default>(&mut self) -> &T {
+        self.stream.read::<T>()
     }
     
     fn sendconnectionrequest(&mut self, ipaddress: String) {

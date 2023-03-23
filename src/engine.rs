@@ -215,6 +215,8 @@ pub(crate) fn run() -> Result<(), String> {
         if player.position != prevPlayerPos {
             netclient.write(&(player.position.x, player.position.y));
             // netclient.commitdata();
+            // let x = netclient.read::<(i16, i16)>();
+            // println!("CLIENT: Read pos: {:?} from stream", x);
             prevPlayerPos = player.position;
         }
 
@@ -235,6 +237,7 @@ pub(crate) fn run() -> Result<(), String> {
         // for p in &playerpositions {
         //     println!("Client {} has pos {:?}", p.0, p.1);
         // }
+
 
         sharedbuffer.lock().unwrap().clear();
 
