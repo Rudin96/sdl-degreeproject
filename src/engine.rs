@@ -239,8 +239,6 @@ pub(crate) fn run() -> Result<(), String> {
         
         player.position = player.position.offset((-player.speed * a.x * (_deltatime as f32)) as i32,(-player.speed * a.y * (_deltatime as f32)) as i32);
 
-        println!("{}", -player.speed * a.x * (_deltatime as f32));
-
         mouse_position = (event_pump.mouse_state().x(),event_pump.mouse_state().y()).into();
         
         //Send local position to server
@@ -314,7 +312,7 @@ pub(crate) fn run() -> Result<(), String> {
         canvas.present();
 
         
-        //::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        //::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));
         
     }
 
