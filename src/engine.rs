@@ -22,7 +22,7 @@ use sdl2::mouse::{MouseButton};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use std::{env};
+use std::{env, thread};
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -155,7 +155,7 @@ pub(crate) fn run() -> Result<(), String> {
 
     let mut prevPlayerPos = player.position;
 
-    let mut playerpositions: HashMap<u8, Custom_Vector2> = HashMap::new();
+    let mut playerpositions: HashMap<u8, (i32, i32)> = HashMap::new();
 
     const FRAME_VALUES: usize = 10;
     let mut frame_times: [u32; FRAME_VALUES] = [0; FRAME_VALUES];
@@ -263,7 +263,8 @@ pub(crate) fn run() -> Result<(), String> {
         
         //Send local position to server
         if player.position != prevPlayerPos {
-            netclient.sendpos(Custom_Vector2 {x: player.position.x, y: player.position.y});
+            // netclient.sendpos(Custom_Vector2 {x: player.position.x, y: player.position.y});
+            //TODO call netclient.send and write netclient submit
             prevPlayerPos = player.position;
         }
 
