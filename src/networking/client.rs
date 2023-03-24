@@ -1,6 +1,6 @@
 use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr, ToSocketAddrs}, thread, str::FromStr};
 
-use crate::{constvalues::{self, PORT_NUMBER}, datatypes::vector::Vector2};
+use crate::{constvalues::{self, PORT_NUMBER}, datatypes::vector::Custom_Vector2};
 
 
 pub struct Client {
@@ -10,7 +10,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn sendpos(&self, pos: Vector2) {
+    pub fn sendpos(&self, pos: Custom_Vector2) {
         let serstring = serde_json::to_string(&pos).unwrap();
         println!("Pos string: {}", serstring);
         self.socket.send_to(serstring.as_bytes(), self.ipaddress.as_str()).unwrap();

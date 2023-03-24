@@ -2,39 +2,41 @@ mod render;
 mod player;
 mod objects;
 
+//External Crates
+use nalgebra::Vector2;
+use rand::Rng;
+
+//SDL and custom crates
 use player::player_module;
-use sdl_degreeproject::constvalues;
-use sdl_degreeproject::datatypes::vector::Vector2;
+use sdl2::sys::{SDL_GetTicks, SDL_GetPerformanceCounter, SDL_GetPerformanceFrequency};
+use sdl_degreeproject::datatypes::vector::Custom_Vector2;
 use sdl_degreeproject::networking::{client, server};
-use serde::de::value;
-use self::objects::object_module::Objects;
+use self::objects::object_module::{Objects, allocate_object};
 use self::player::player_module::Player;
 use self::render::render_text;
 
 use render::render_players;
 
-use objects::object_module::place_furniture;
-
 use sdl2::mouse::{MouseButton};
-use sdl2::render::{TextureCreator, Texture};
-use sdl2::video::WindowContext;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::{env, vec};
-use std::path::Path;
 use std::time::Duration;
+use std::{env};
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::rect::{Rect, Point};
 use sdl2::image::{self,LoadTexture,InitFlag};
+
+
 pub struct Tile
 {
     rect: Rect,
     occupied: bool,
     furniture: Option<Objects>,
     position: Point,
-    highlight: bool
+    highlight: bool,
+    imageid: u32
 }
 
 const SCREEN_WIDTH: u32 = 1000;
@@ -69,6 +71,9 @@ pub(crate) fn run() -> Result<(), String> {
         buffer.push(netbuffer.to_vec());
     });
 
+
+
+
     let video_subsystem = sdl_context.video()?;
     let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).unwrap();
 
@@ -91,23 +96,29 @@ pub(crate) fn run() -> Result<(), String> {
 
     let texture = texture_creator.load_texture("face.png")?;
     let catman = texture_creator.load_texture("catman.png")?;
+    let players = texture_creator.load_texture("characters.png")?;
+    let asset_pack = texture_creator.load_texture("First Asset pack.png")?;
 
+    let house_rect = Rect::new(36,0,48,96); //Where in the image do we want to source from?
+    let screen_center = Rect::new(0,0,200,200);
+
+
+    let mut img_hash: HashMap<u8,Rect> = HashMap::new();
+    create_player_images(&players, &mut img_hash);
 
     let mut player = Player
     {
         position: Point::new(0, 0), 
-        sprite: Rect::new(0,0,32,32), 
-        speed: 5,
-        player_texture: texture,
+        sprite: Rect::new(0,0,16,32), 
+        speed: 1000.0,
+        player_texture: players,
         player_id: 0,
         text_texture: None    
     };
 
 
     let mut player_input = player_module::PlayerInput::default();
-
     let mut mouse_position = Point::new(0,0);
-
 
     canvas.set_draw_color(Color::RGB(0, 255, 255));
 
@@ -116,42 +127,73 @@ pub(crate) fn run() -> Result<(), String> {
     let rows =  GRID_HEIGHT;
     let columns  =  GRID_WIDTH;
 
-    let mut tile_rect = Rect::new(0,0,0,0);
-    let mut sprite_rect = Rect::new(0,0,0,0);
-
-
-    let mut _new_grid: Vec<Tile> = vec![];
-    create_grid(&rows, &columns, &mut _new_grid);
-
-
     let mut grid_map: HashMap<(i32,i32),Tile> = HashMap::new();
 
-    //create_grid(&rows, &columns, &mut _new_grid);
+    let mut tile_rect = Rect::new(0,0,0,0);
     
     create_hash_grid(&rows, &columns, &mut grid_map);
 
-    //map.insert((0, 0), "value");
-
-    // let mut fewefwfwe = HashMap::new();
-    // create_grid(&rows, &columns, &mut _new_grid);
-
-
-    // Number of frames to average over
-    let num_frames = 60;
-    // Array to store frame times
-    let mut frame_times: [u32; 60] = [0; 60];
-    // Index for frame times array
-    let mut frame_index = 0;
-
-    let mut i = 0;
-    
     let mut prevPlayerPos = player.position;
 
-    let mut playerpositions: HashMap<u8, Vector2> = HashMap::new();
+    let mut playerpositions: HashMap<u8, Custom_Vector2> = HashMap::new();
+
+    const FRAME_VALUES: usize = 10;
+    let mut frame_times: [u32; FRAME_VALUES] = [0; FRAME_VALUES];
+    let mut frame_time_last: u32 = unsafe { SDL_GetTicks() };
+    let mut frame_count: usize = 0;
+
+    let random_key: (i32,i32) = (rand::thread_rng().gen_range(0..11),rand::thread_rng().gen_range(0..11));
+
+    let mut previousticks: f64 = unsafe { SDL_GetPerformanceCounter() as f64 };
+    
 
     'running: loop {
+
         
-        let start_time = unsafe { sdl2::sys::SDL_GetTicks() };
+
+        let ticks:f64 = unsafe { SDL_GetPerformanceCounter() as f64 };
+
+        let deltaticks = ticks - previousticks;
+
+        previousticks = ticks;
+
+        let _deltatime = deltaticks  / unsafe { SDL_GetPerformanceFrequency() as f64 };
+
+        //println!("{}",_deltatime);
+
+
+        //println!("{0},{1}",random_key.0,random_key.1);
+        // if let Some(a) = grid_map.get_mut(&random_key)
+        // {
+            
+        // }
+
+
+        // let current_ticks = unsafe { SDL_GetTicks() };
+
+        // frame_times[frame_count % FRAME_VALUES] = current_ticks - frame_time_last;
+
+        // frame_time_last = current_ticks;
+        
+        // let count: usize;
+        // if frame_count < FRAME_VALUES {
+        //     count = frame_count;
+        // }    
+        // else {
+        // count = FRAME_VALUES;
+        // } 
+        // frame_count += 1;
+
+        // let mut frame_time_average: f32 = 0.0;
+
+        // for i in 0..count {
+        //     frame_time_average += frame_times[i] as f32;
+        // }
+        // frame_time_average /= count as f32;
+
+
+
+
 
 
         // i = (i + 1) % 255;
@@ -179,35 +221,32 @@ pub(crate) fn run() -> Result<(), String> {
                 Event::KeyUp { keycode: Some(Keycode::Right), .. } => { player_input.right_is_held_down = false;}
                 Event::KeyUp { keycode: Some(Keycode::Up), .. } => { player_input.up_is_held_down = false;}
                 Event::KeyUp { keycode: Some(Keycode::Down), .. } => { player_input.down_is_held_down = false;}
+                
+                Event::KeyDown { keycode: Some(Keycode::Num1), .. } => { player_input.keyboard_num = 1;}
+                Event::KeyDown { keycode: Some(Keycode::Num2), .. } => { player_input.keyboard_num = 2;}
+                Event::KeyDown { keycode: Some(Keycode::Num3), .. } => { player_input.keyboard_num = 3;}
+
+
                 _ => {}
             }
         }
 
+        
 
-        if player_input.left_is_held_down {
-            player.position = player.position.offset(-player.speed, 0);
-        } 
-        if player_input.right_is_held_down {
-            player.position = player.position.offset(player.speed, 0);
-        } 
-        if player_input.up_is_held_down {
-            player.position = player.position.offset(0, -player.speed);
-        }
-        if player_input.down_is_held_down {
-            player.position = player.position.offset(0, player.speed);
-        }
+        let mut a = Vector2::new(0.0,0.0);
+        check_player_input(&player_input, &mut a);
+        a = a.normalize();
+        
+        player.position = player.position.offset((-player.speed * a.x * (_deltatime as f32)) as i32,(-player.speed * a.y * (_deltatime as f32)) as i32);
 
         mouse_position = (event_pump.mouse_state().x(),event_pump.mouse_state().y()).into();
-
-
         
         //Send local position to server
         if player.position != prevPlayerPos {
-            netclient.sendpos(Vector2 {x: player.position.x, y: player.position.y});
+            netclient.sendpos(Custom_Vector2 {x: player.position.x, y: player.position.y});
             prevPlayerPos = player.position;
         }
 
-        
         canvas.clear();
 
         //Here we deserialize to playerposition hashmap
@@ -220,38 +259,43 @@ pub(crate) fn run() -> Result<(), String> {
             }
         }
 
-        //Here we read everything from it
-        // for p in &playerpositions {
-        //     println!("Client {} has pos {:?}", p.0, p.1);
-        // }
-
+        
         sharedbuffer.lock().unwrap().clear();
 
-        //check_tile(&mut _new_grid, &mouse_position, &player_input);
-        //draw_tiles(&mut _new_grid, &mut canvas,&mut sprite_rect, &mut tile_rect);
-
-        
-
-        draw_tile_grid(&mut grid_map, &mut canvas,&mut sprite_rect, &mut tile_rect);
+        //Allocate and draw grid
         check_hash_tile(&mut grid_map, &mouse_position, &player_input);
+        draw_tile_grid(&mut grid_map, &mut canvas, &mut tile_rect);
 
-        //check_tile(&mut _new_grid, &event_pump, &mut canvas, &player_input, &mut sprite_rect, &mut tile_rect);
-        
-        
         //Draw objects
         canvas.set_draw_color(Color::RGB(0, 255, 0));
-        for piece in &_new_grid {
+        for piece in &grid_map {
 
-            match &piece.furniture {
-                Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
-                _ => ()
-            }
+            if piece.1.furniture.is_some() && piece.1.occupied {
+
+                if piece.1.imageid == 0 {
+                    match &piece.1.furniture {
+                        Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
+                        _ => () 
+                        }
+                    } 
+                }
+                if piece.1.imageid == 1 {
+                    match &piece.1.furniture {
+                        Some(furniture) => canvas.copy(&asset_pack,furniture.sprite,furniture.rect).unwrap(),
+                        _ => () 
+                        }
+                } 
+                
         }
+
+
 
 
         for playerclient in &playerpositions {
 
-            render_players(Color::RGB(i, 64, 255 - i),&mut canvas,playerclient,&player);
+            player.sprite = img_hash[playerclient.0];
+
+            render_players(Color::RED,&mut canvas,playerclient,&mut player);
 
             let player_text = "Player ".to_owned() + &playerclient.0.to_string();
             let text_surface = font.render(&player_text.to_string()).blended(Color::RGBA(255,0,0,255)).unwrap();
@@ -262,37 +306,13 @@ pub(crate) fn run() -> Result<(), String> {
 
             //render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&font).unwrap();
         }
+        canvas.copy(&asset_pack, house_rect, screen_center).unwrap();
 
         
         canvas.present();
 
         
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
-
-        // Get time after rendering frame
-        let end_time = unsafe { sdl2::sys::SDL_GetTicks() };
-        
-        // Calculate time taken to render frame
-        let frame_time = end_time - start_time;
-        
-        // Store frame time in array and increment index
-        frame_times[frame_index] = frame_time;
-        frame_index += 1;
-
-        if frame_index >= num_frames {
-            // Calculate average FPS over num_frames frames
-            let total_frame_time: u32 = frame_times.iter().sum();
-            let avg_frame_time: f64 = (total_frame_time as f64) / (num_frames as f64);
-            let avg_fps: f64 = 1000.0 / avg_frame_time;
-
-            println!("Average FPS: {}", avg_fps);
-
-            // Reset index and clear array
-            frame_index = 0;
-            for i in &mut frame_times {
-                *i=0;
-            }
-       }
+        //::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));
         
     }
 
@@ -300,28 +320,58 @@ pub(crate) fn run() -> Result<(), String> {
     // ...
 }
 
-
-fn draw_tiles(_new_grid: &mut Vec<Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,sprite_rect: &mut Rect,tile_rect: &mut Rect) {
+fn check_player_input(player_input: &player_module::PlayerInput, a: &mut nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>) {
+    match ( player_input.left_is_held_down,
+            player_input.right_is_held_down,
+            player_input.down_is_held_down,
+            player_input.up_is_held_down) {
     
-    for tile in  _new_grid{
-        if tile.highlight {
-            canvas.set_draw_color(Color::RGB(0, 255, 0));
-            canvas.fill_rect(tile.rect).unwrap();
+        (true,false,true,false) => {//Left Down
+            a.x = 1.0;
+            a.y = -1.0;
         }
-
-        else if !tile.highlight {
-            canvas.set_draw_color(Color::RGB(255, 255, 255));
-            canvas.draw_rect(tile.rect).unwrap();  
+        (true,false,false,true) => {//Left Up
+            a.x = 1.0;
+            a.y = 1.0;
         }
-
-        if tile.occupied {
-            place_furniture(canvas, tile, sprite_rect, tile_rect)
+        (false,true,false,true) => {//Right Up
+            a.x = -1.0;
+            a.y = 1.0;
         }
+        (false,true,true,false) => {//Right Down
+            a.x = -1.0;
+            a.y = -1.0;
+        }
+        (false,false,true,false) => {//Up
+            a.x = 0.0;
+            a.y = -1.0;
+        }
+        (false,false,false,true) => {//Down
+            a.x = 0.0;
+            a.y = 1.0;
+        }
+        (true,false,false,false) => {//Left
+            a.x = 1.0;
+            a.y = 0.0;
+        }
+        (false,true,false,false) => {//Right
+            a.x = -1.0;
+            a.y = 0.0;
+        }
+        _ => {}
     }
 }
 
+fn create_player_images(players: &sdl2::render::Texture, img_hash: &mut HashMap<u8, Rect>) {
+    for i in 0..players.query().height / 64 {
+    
+        let img_src = Rect::new(0,32*i as i32 ,16,32);
 
-fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,sprite_rect: &mut Rect,tile_rect: &mut Rect) {
+        img_hash.insert(i as u8, img_src);
+    }
+}
+
+fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,tile_rect: &mut Rect) {
     
     for tile in  _tile_map{
         if tile.1.highlight {
@@ -333,72 +383,6 @@ fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::ren
             canvas.set_draw_color(Color::RGB(255, 255, 255));
             canvas.draw_rect(tile.1.rect).unwrap();  
         }
-
-        if tile.1.occupied {
-            place_furniture(canvas, tile.1, sprite_rect, tile_rect)
-        }
-    }
-}
-
-// fn check_tile(_new_grid: &mut Vec<Tile>, 
-//     event_pump: &sdl2::EventPump, 
-//     canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, 
-//     player_input: &player_module::PlayerInput, 
-//     sprite_rect: &mut Rect, 
-//     tile_rect: &mut Rect) 
-//     {
-//     for tile in  _new_grid{
-//         let _x = event_pump.mouse_state().x();
-//         let _y = event_pump.mouse_state().y();
-//         if  _x < (tile.rect.x + tile.rect.width() as i32) &&
-//             _x > tile.rect.x &&
-//             _y < (tile.rect.y + tile.rect.height() as i32) &&
-//             _y > tile.rect.y
-//             {
-//                 canvas.set_draw_color(Color::RGB(0, 255, 0));
-//                 canvas.draw_rect(tile.rect).unwrap();
-//                 if player_input.m1_is_down && !tile.occupied{
-//                     place_furniture(canvas, tile, sprite_rect, tile_rect);
-//                 }
-//                 if player_input.m2_is_down && tile.occupied{
-//                     tile.occupied = false;
-//                     tile.furniture = None; 
-//                     //Get the rect location
-//                     //Draw a new rect based on the location
-//                     //Make sure its drawn in the middle of the current rect
-//                     //postition + width to make sure its properly placed
-//                     //Tag current one as occupied?
-//                 }
-//             }
-//         else {
-//             canvas.set_draw_color(Color::RGB(255, 0, 0));
-//             canvas.draw_rect(tile.rect).unwrap();
-//         }
-//     }
-// }
-
-fn check_tile(_new_grid: &mut Vec<Tile>,
-    mouse_position: &Point, 
-    player_input: &player_module::PlayerInput) 
-    {
-    for tile in  _new_grid{
-        
-        if (mouse_position.x / 100) == tile.position.x && (mouse_position.y / 100) == tile.position.y {
-                tile.highlight = true;
-
-                if player_input.m1_is_down && !tile.occupied{
-                    tile.occupied = true;
-                }
-
-                if player_input.m2_is_down && tile.occupied{
-
-                    tile.occupied = false;
-                    tile.furniture = None;
-                }
-            }
-        else {
-                tile.highlight = false;
-            }
     }
 }
 
@@ -407,66 +391,66 @@ fn check_hash_tile(_tile_map: &mut HashMap<(i32,i32),Tile>,
     player_input: &player_module::PlayerInput) 
     {
 
-    for tile in _tile_map.values_mut() {
-        tile.highlight = false;
-    }
+    let key = &(mouse_position.x / 100,mouse_position.y/ 100);
+    let mut keys_to_modify = Vec::new();
+    let mut value_to_modify_to = true;
 
-    let value = _tile_map.get_mut(&(mouse_position.x / 100,mouse_position.y/ 100));
-    
-    if let Some(tile) = value {
 
-        tile.highlight = true;
+    for tile in _tile_map.into_iter() {
 
-        if player_input.m1_is_down && !tile.occupied{
-            tile.occupied = true;
+        if tile.1.position.x == key.0 && tile.1.position.y == key.1{
+            tile.1.highlight = true;
+
+            if player_input.m1_is_down && !tile.1.occupied{
+
+                allocate_object(tile.1, player_input.keyboard_num);
+                value_to_modify_to = true;
+
+                if let Some(a) = &tile.1.furniture {
+                    
+                    for i  in -a.object_width+1 ..  a.object_width {
+                        for j  in -a.object_height+1 ..  a.object_height {
+                            keys_to_modify.push((key.0+i,key.1+j));
+                        } 
+                    }    
+                }
+            }
+            if player_input.m2_is_down && tile.1.occupied{
+
+                if let Some(a) = &tile.1.furniture {
+                    
+                    for i  in -a.object_width+1 ..  a.object_width {
+                        keys_to_modify.push((key.0+i,key.1));
+                    }   
+                }
+
+                tile.1.occupied = false;
+                tile.1.furniture = None;
+                value_to_modify_to = false;
+            }   
         }
+        else {
+        tile.1.highlight = false;    
+        }
+    }
 
-        if player_input.m2_is_down && tile.occupied{
-
-            tile.occupied = false;
-            tile.furniture = None;
+    let mut indices_to_remove = Vec::new();
+    for (index, tile) in keys_to_modify.iter().enumerate() {
+        if let Some(a) = _tile_map.get_mut(tile) {
+            a.occupied = value_to_modify_to;
+            indices_to_remove.push(index);
         }
     }
 
 
-    // for tile in  _new_grid{
-        
-    //     if (mouse_position.x / 100) == tile.position.x && (mouse_position.y / 100) == tile.position.y {
-    //             tile.highlight = true;
-
-    //             if player_input.m1_is_down && !tile.occupied{
-    //                 tile.occupied = true;
-    //             }
-
-    //             if player_input.m2_is_down && tile.occupied{
-
-    //                 tile.occupied = false;
-    //                 tile.furniture = None;
-    //             }
-    //         }
-    //     else {
-    //             tile.highlight = false;
-    //         }
-    // }
-}
-fn create_grid(rows: &i32, columns: &i32, _new_grid: &mut Vec<Tile>) {
-    for i in 0..(rows * columns) {
-    
-        let row = i / columns;
-        let col = i % columns;
-
-        let tile = Rect::new(100 * row as i32, 100 * col as i32, 100, 100);
-
-        let new_tile = Tile {
-            rect: tile,
-            occupied: false,
-            furniture: None,
-            position: Point::new(row,col),
-            highlight: false
-        };
-        _new_grid.push(new_tile)
+    for index in indices_to_remove.into_iter().rev() {
+        keys_to_modify.remove(index);
     }
+
+
 }
+
+
 
 fn create_hash_grid(rows: &i32, columns: &i32, _tile_map: &mut HashMap<(i32,i32),Tile>) {
     for i in 0..(rows * columns) {
@@ -481,10 +465,12 @@ fn create_hash_grid(rows: &i32, columns: &i32, _tile_map: &mut HashMap<(i32,i32)
             occupied: false,
             furniture: None,
             position: Point::new(row,col),
-            highlight: false
+            highlight: false,
+            imageid: 0
         };
         _tile_map.insert((row,col),new_tile);
     }
 }
+
 
 
