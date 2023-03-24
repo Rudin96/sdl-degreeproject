@@ -36,11 +36,21 @@ pub mod player_module{
         pub m2_is_down: bool,
         
         pub tab: bool,
+
+        pub keyboard_num: u32
     }
 
     impl Default for PlayerInput {
         fn default() -> Self {
-            Self { left_is_held_down: false, right_is_held_down: false, up_is_held_down: false, down_is_held_down: false, m1_is_down: false, m2_is_down: false, tab: true }
+            Self { 
+                left_is_held_down: false, 
+                right_is_held_down: false, 
+                up_is_held_down: false, 
+                down_is_held_down: false, 
+                m1_is_down: false, 
+                m2_is_down: false, 
+                tab: true, 
+                keyboard_num: 0 }
         }
     }
 }

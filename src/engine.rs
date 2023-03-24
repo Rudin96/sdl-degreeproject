@@ -2,11 +2,13 @@ mod render;
 mod player;
 mod objects;
 
+//External Crates
 use nalgebra::Vector2;
+use rand::Rng;
 
+//SDL and custom crates
 use player::player_module;
-use sdl2::libc::_IOFBF;
-use sdl2::sys::{SDL_GetPerformanceCounter, SDL_GetPerformanceFrequency, SDL_GetTicks, SDL_FPoint};
+use sdl2::sys::SDL_GetTicks;
 use sdl_degreeproject::datatypes::vector::Custom_Vector2;
 use sdl_degreeproject::networking::{client, server};
 use self::objects::object_module::{Objects, allocate_object};
@@ -19,12 +21,13 @@ use sdl2::mouse::{MouseButton};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::{env};
-use std::time::Duration;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::rect::{Rect, Point};
 use sdl2::image::{self,LoadTexture,InitFlag};
+
+
 pub struct Tile
 {
     rect: Rect,
@@ -93,6 +96,10 @@ pub(crate) fn run() -> Result<(), String> {
     let texture = texture_creator.load_texture("face.png")?;
     let catman = texture_creator.load_texture("catman.png")?;
     let players = texture_creator.load_texture("characters.png")?;
+    let asset_pack = texture_creator.load_texture("First Asset pack.png")?;
+
+    let house_rect = Rect::new(36,0,48,96); //Where in the image do we want to source from?
+    let screen_center = Rect::new(0,0,200,200);
 
 
     let mut img_hash: HashMap<u8,Rect> = HashMap::new();
@@ -112,7 +119,6 @@ pub(crate) fn run() -> Result<(), String> {
     let mut player_input = player_module::PlayerInput::default();
     let mut mouse_position = Point::new(0,0);
 
-
     canvas.set_draw_color(Color::RGB(0, 255, 255));
 
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -120,16 +126,12 @@ pub(crate) fn run() -> Result<(), String> {
     let rows =  GRID_HEIGHT;
     let columns  =  GRID_WIDTH;
 
-    let mut tile_rect = Rect::new(0,0,0,0);
-
-
     let mut grid_map: HashMap<(i32,i32),Tile> = HashMap::new();
+
+    let mut tile_rect = Rect::new(0,0,0,0);
     
     create_hash_grid(&rows, &columns, &mut grid_map);
 
-   
-
-    
     let mut prevPlayerPos = player.position;
 
     let mut playerpositions: HashMap<u8, Custom_Vector2> = HashMap::new();
@@ -139,8 +141,16 @@ pub(crate) fn run() -> Result<(), String> {
     let mut frame_time_last: u32 = unsafe { SDL_GetTicks() };
     let mut frame_count: usize = 0;
 
+    let random_key: (i32,i32) = (rand::thread_rng().gen_range(0..11),rand::thread_rng().gen_range(0..11));
+    
 
     'running: loop {
+
+        //println!("{0},{1}",random_key.0,random_key.1);
+        if let Some(a) = grid_map.get_mut(&random_key)
+        {
+            
+        }
 
 
         let current_ticks = unsafe { SDL_GetTicks() };
@@ -193,26 +203,25 @@ pub(crate) fn run() -> Result<(), String> {
                 Event::KeyUp { keycode: Some(Keycode::Right), .. } => { player_input.right_is_held_down = false;}
                 Event::KeyUp { keycode: Some(Keycode::Up), .. } => { player_input.up_is_held_down = false;}
                 Event::KeyUp { keycode: Some(Keycode::Down), .. } => { player_input.down_is_held_down = false;}
+                
+                Event::KeyDown { keycode: Some(Keycode::Num1), .. } => { player_input.keyboard_num = 1;}
+                Event::KeyDown { keycode: Some(Keycode::Num2), .. } => { player_input.keyboard_num = 2;}
+                Event::KeyDown { keycode: Some(Keycode::Num3), .. } => { player_input.keyboard_num = 3;}
+
+
                 _ => {}
             }
         }
 
+        
 
         let mut a = Vector2::new(0.0,0.0);
-        a = a.normalize();
-
         check_player_input(&player_input, &mut a);
-
         a = a.normalize();
         
         player.position = player.position.offset((-player.speed * a.x * frame_time_average) as i32,(-player.speed * a.y * frame_time_average) as i32);
 
-
-
-        
         mouse_position = (event_pump.mouse_state().x(),event_pump.mouse_state().y()).into();
-
-
         
         //Send local position to server
         if player.position != prevPlayerPos {
@@ -220,7 +229,6 @@ pub(crate) fn run() -> Result<(), String> {
             prevPlayerPos = player.position;
         }
 
-        
         canvas.clear();
 
         //Here we deserialize to playerposition hashmap
@@ -235,8 +243,6 @@ pub(crate) fn run() -> Result<(), String> {
 
         
         sharedbuffer.lock().unwrap().clear();
-
-
 
         //Allocate and draw grid
         check_hash_tile(&mut grid_map, &mouse_position, &player_input);
@@ -255,7 +261,16 @@ pub(crate) fn run() -> Result<(), String> {
                         }
                     } 
                 }
+                if piece.1.imageid == 1 {
+                    match &piece.1.furniture {
+                        Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
+                        _ => () 
+                        }
+                } 
+                
         }
+
+
 
 
         for playerclient in &playerpositions {
@@ -273,6 +288,7 @@ pub(crate) fn run() -> Result<(), String> {
 
             //render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&font).unwrap();
         }
+        canvas.copy(&asset_pack, house_rect, screen_center).unwrap();
 
         
         canvas.present();
@@ -359,16 +375,18 @@ fn check_hash_tile(_tile_map: &mut HashMap<(i32,i32),Tile>,
 
     let key = &(mouse_position.x / 100,mouse_position.y/ 100);
     let mut keys_to_modify = Vec::new();
+    let mut value_to_modify_to = true;
 
 
     for tile in _tile_map.into_iter() {
 
         if tile.1.position.x == key.0 && tile.1.position.y == key.1{
             tile.1.highlight = true;
-            
+
             if player_input.m1_is_down && !tile.1.occupied{
 
-                allocate_object(tile.1);
+                allocate_object(tile.1, player_input.keyboard_num);
+                value_to_modify_to = true;
 
                 if let Some(a) = &tile.1.furniture {
                     
@@ -379,21 +397,34 @@ fn check_hash_tile(_tile_map: &mut HashMap<(i32,i32),Tile>,
             }
             if player_input.m2_is_down && tile.1.occupied{
 
+                if let Some(a) = &tile.1.furniture {
+                    
+                    for i  in -a.object_width+1 ..  a.object_width {
+                        keys_to_modify.push((key.0+i,key.1));
+                    }   
+                }
+
                 tile.1.occupied = false;
                 tile.1.furniture = None;
-            }
-                   
+                value_to_modify_to = false;
+            }   
         }
         else {
         tile.1.highlight = false;    
         }
-
     }
 
-    for tile in keys_to_modify {
-        if let Some(a) = _tile_map.get_mut(&tile) {
-            a.occupied = true;
+    let mut indices_to_remove = Vec::new();
+    for (index, tile) in keys_to_modify.iter().enumerate() {
+        if let Some(a) = _tile_map.get_mut(tile) {
+            a.occupied = value_to_modify_to;
+            indices_to_remove.push(index);
         }
+    }
+
+
+    for index in indices_to_remove.into_iter().rev() {
+        keys_to_modify.remove(index);
     }
 
 

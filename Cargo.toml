@@ -19,3 +19,7 @@ features = ["image","ttf"]
 
 [dependencies.nalgebra]
 version = "0.32.2"
+
+[dependencies.rand]
+version = "0.8.5"
+

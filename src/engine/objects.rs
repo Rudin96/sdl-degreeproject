@@ -7,7 +7,8 @@ pub struct Objects
 {
     pub rect: Rect,
     pub sprite: Rect,
-    pub object_width: i32
+    pub object_width: i32,
+    pub object_height: i32
 }
 
 
@@ -23,7 +24,8 @@ pub struct Objects
         let new_piece = Objects {
             rect: *tile_rect,
             sprite: *sprite_rect,
-            object_width: 3
+            object_width: 3,
+            object_height: 1
         };
 
         tile.occupied = true;
@@ -31,25 +33,29 @@ pub struct Objects
 
                             
     }
-    pub fn allocate_object(tile: &mut Tile) {
+    pub fn allocate_object(tile: &mut Tile, num: u32) {
         
-                
-        let sprite_rect = Rect::new(0,0, 384, 128);
+        if num == 0 {
+            let sprite_rect = Rect::new(0,0, 384, 128);
 
-        let furn_rect = Rect::new(
-        tile.rect.x + (tile.rect.width() / 2) as i32,
-        tile.rect.y + (tile.rect.height() / 2) as i32,
-        tile.rect.width() * 3,
-        tile.rect.height());
- 
-        let new_piece = Objects {
-            rect: furn_rect,
-            sprite: sprite_rect,
-            object_width: 3
-        };
+            let furn_rect = Rect::new(
+            tile.rect.x + (tile.rect.width() / 2) as i32,
+            tile.rect.y + (tile.rect.height() / 2) as i32,
+            tile.rect.width() * 3,
+            tile.rect.height());
+    
+            let new_piece = Objects {
+                rect: furn_rect,
+                sprite: sprite_rect,
+                object_width: 3,
+                object_height: 1
+            };
 
-        tile.occupied = true;
-        tile.furniture = Some(new_piece);
+            tile.occupied = true;
+            tile.furniture = Some(new_piece);
+        }
+
+        
                             
     }
 }
