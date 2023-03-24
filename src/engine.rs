@@ -38,6 +38,16 @@ pub struct Tile
     highlight: bool
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub struct Test {
+    x: i32,
+    y: i32,
+    z: i32,
+
+    a: f64,
+    b: f64
+}
+
 const SCREEN_WIDTH: u32 = 800;
 const SCREEN_HEIGHT: u32 = 800;
 
@@ -213,11 +223,15 @@ pub(crate) fn run() -> Result<(), String> {
         
         //Send local position to server
         if player.position != prevPlayerPos {
-            netclient.write(&(player.position.x, player.position.y));
+            let mut test = Test::default();
+            test.a = 10.0;
+            test.b = 206.0;
+            netclient.write(test);
+            println!("Pos is : {:?}", player.position);
+            let newtest = netclient.read::<Test>();
+            println!("playerpos: {:?}", newtest);
             // netclient.commitdata();
-            let x = netclient.read::<(i16, i16)>();
-            println!("CLIENT: Read pos: {:?} from stream", x);
-            // netclient.clearbuffer();
+            netclient.clearbuffer();
             prevPlayerPos = player.position;
         }
 

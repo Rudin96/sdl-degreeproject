@@ -4,6 +4,7 @@ use crate::{constvalues::{self, PORT_NUMBER}};
 
 use super::stream::Stream;
 
+
 pub enum ConnectionState {
     DISCONNECTED,
     CONNECTING,
@@ -28,12 +29,12 @@ fn checkifconnectionreq(packet: &[u8]) -> bool {
 }
 
 impl Client {
-    pub fn write<T>(&mut self, data: &T) {
+    pub fn write<T: Copy>(&mut self, data: T) {
         self.stream.write(data);
         println!("Writing data to stream");
     }
 
-    pub fn read<T: std::default::Default + std::fmt::Debug>(&mut self) -> T {
+    pub fn read<T: Default + Copy>(&mut self) -> T {
         self.stream.read::<T>()
     }
     
