@@ -10,7 +10,7 @@ pub fn render_players(color: Color,canvas: &mut WindowCanvas,playerclient: (&u8,
 
     let (width, height) = canvas.output_size().unwrap();
 
-    let playpos = Point::new(playerclient.1.x,playerclient.1.y);
+    let playpos = Point::new(playerclient.1.0,playerclient.1.1);
 
     let screen_position = playpos + Point::new(width as i32/2, height as i32 / 2);
     let screen_rect = Rect::from_center(screen_position, player.sprite.width() * 2, player.sprite.height() * 2);
@@ -64,7 +64,7 @@ pub fn render_text(canvas: &mut WindowCanvas, text_texture: &Texture,playerclien
 
     let (width, height) = canvas.output_size()?;
 
-    let playpos = Point::new(playerclient.1.x,playerclient.1.y);
+    let playpos = Point::new(playerclient.1.0,playerclient.1.1);
 
     let screen_position = playpos + Point::new(width as i32/2, (height as i32 / 2) - 32) ;
     let screen_rect = Rect::from_center(screen_position, text_texture.query().width, text_texture.query().height);

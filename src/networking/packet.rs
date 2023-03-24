@@ -1,15 +1,25 @@
-pub struct Packet{
-    x: i32,
-    y: i32,
-    z: i32
+pub struct PosPacket {
+    i: usize,
+    x: i16,
+    y: i16,
+    z: i16
+}
+
+pub struct WorldPacket {
+    i: usize,
+    t: HashMap<i8, Vector2>
+}
+
+pub struct ConnectionPacket {
+    i: usize,
+    status: u8,
 }
 
 pub trait Write {
-    fn write(buffer: &Buffer);
-    fn write_int(buffer: &Buffer);
+    fn WriteToStream<T>(val: &T, buffer: &Buffer);
 }
 
-pub trait Read {
-    fn read(buffer: &Buffer);
-    fn read_int(buffer: &Buffer);
+pub struct Schema {
+    player: Player,
+
 }

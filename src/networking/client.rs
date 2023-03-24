@@ -1,67 +1,87 @@
-use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr, ToSocketAddrs}, thread, str::FromStr};
+use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr, ToSocketAddrs}, thread, str::FromStr, sync::mpsc::{Receiver, Sender, channel}};
 
-use crate::{constvalues::{self, PORT_NUMBER}, datatypes::vector::Custom_Vector2};
 
+use crate::{constvalues::{self, PORT_NUMBER}};
+
+use super::stream::Stream;
+
+
+pub enum ConnectionState {
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTED
+}
 
 pub struct Client {
     socket: UdpSocket,
     ipaddress: String,
-    pub id: i8,
+    buffer: (Sender<Vec<u8>>, Receiver<Vec<u8>>),
+    stream: Stream,
+    pub id: u8,
+    pub connstate: ConnectionState
+}
+
+fn checkifconnectionreq(packet: &[u8]) -> bool {
+    if packet[0] == 26 {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 impl Client {
-    pub fn sendpos(&self, pos: Custom_Vector2) {
-        let serstring = serde_json::to_string(&pos).unwrap();
-        println!("Pos string: {}", serstring);
-        self.socket.send_to(serstring.as_bytes(), self.ipaddress.as_str()).unwrap();
+    pub fn write<T: Copy>(&mut self, data: T) {
+        self.stream.write(data);
+        println!("Writing data to stream");
+    }
+
+    pub fn read<T: Default + Copy>(&mut self) -> T {
+        self.stream.read::<T>()
     }
     
-    pub fn recieve<Func: Fn(&mut[u8]) + Send + 'static>(&self, function: Func) {
+    fn sendconnectionrequest(&mut self, ipaddress: String) {
+        //TODO send a connectrequest packet to server
+    }
+
+    pub fn commitdata(&self) {
+        loop {
+            let buf = self.buffer.1.try_recv().unwrap();
+            println!("CLIENT: Self IP is: {}", self.ipaddress);
+            self.socket.send_to(&buf, self.ipaddress.as_str()).unwrap();
+        }
+    }
+
+    pub fn recieve(&self) {
         let selfsocket = self.socket.try_clone().unwrap();
         thread::spawn(move || {
             loop {
-                let mut buf = [0; constvalues::BUF_SIZE];
-        
+                let mut buf = vec![0; 1024];
+                println!("Client: Starting receive thread");
                 let (number_of_bytes, _from) = selfsocket.recv_from(&mut buf).expect("Client recieve error");
-                let mut filled_buf = &mut buf[..number_of_bytes];
-
-                function(&mut filled_buf);
+                let filled_buf = &mut buf[..number_of_bytes];
+                println!("Client: Received packet from {}", _from);
+                if checkifconnectionreq(&filled_buf) {
+                    println!("Connection successful");
+                }
             }
         });
     }
     
-    pub fn connect(&mut self, ipaddress: String) {
-        let selfsocket = &self.socket;
-        let connection_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::from_str(&ipaddress).unwrap()), PORT_NUMBER);
-        selfsocket.connect(&connection_addr).expect("Couldnt connect to address!");
-        let mut connectstream = [0; 4];
-        connectstream[0] = 26;
-        selfsocket.send_to(&connectstream, &connection_addr).expect("Connection request send error");
-
-        println!("Sending connection request");
-
-        self.waitforclientid();
+    pub fn clearbuffer(&mut self) {
+        self.stream.clear();
     }
 
-    fn waitforclientid(&mut self) {
-        let selfsocket = &self.socket;
-        let mut buf = [0; constvalues::BUF_SIZE];
-        
-        let (number_of_bytes, _from) = selfsocket.recv_from(&mut buf).expect("Client recieve error");
-        let filled_buf = &mut buf[..number_of_bytes];
-
-        
-        if filled_buf[0] == 26 {
-            println!("Receiving connection packet from server with id: {}", filled_buf[1]);
-            self.id = filled_buf[1] as i8;
-            self.ipaddress = _from.to_string();
-        }
+    pub fn connect(&mut self, ipaddress: String) {
+        self.recieve();
+        self.ipaddress = ipaddress.clone();
+        // self.commitdata();
+        // self.sendconnectionrequest(ipaddress.to_string());
     }
 }
 
 pub fn init() -> Client {
     let sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0);
     let socket = UdpSocket::bind(sock_addr).expect("Error binding to socket");
-    let newclient = Client { socket: socket.try_clone().unwrap(), ipaddress: Ipv4Addr::UNSPECIFIED.to_string() , id: 0 };
+    let newclient = Client { socket, ipaddress: Ipv4Addr::UNSPECIFIED.to_string() , id: 0, connstate: ConnectionState::DISCONNECTED, buffer: channel(), stream: Stream::new() };
     newclient
 }

@@ -3,6 +3,9 @@ name = "sdl-degreeproject"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies]
+concurrent-queue = "2.1.0"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies.serde_json]
@@ -17,9 +20,11 @@ version = "0.35"
 default-features = false
 features = ["image","ttf"]
 
+[dependencies.datetime]
+version = "0.5"
+
 [dependencies.nalgebra]
 version = "0.32.2"
 
 [dependencies.rand]
 version = "0.8.5"
-

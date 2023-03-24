@@ -8,6 +8,7 @@ use rand::Rng;
 
 //SDL and custom crates
 use player::player_module;
+
 use sdl2::sys::{SDL_GetTicks, SDL_GetPerformanceCounter, SDL_GetPerformanceFrequency};
 use sdl_degreeproject::datatypes::vector::Custom_Vector2;
 use sdl_degreeproject::networking::{client, server};
@@ -39,8 +40,18 @@ pub struct Tile
     imageid: u32
 }
 
-const SCREEN_WIDTH: u32 = 1000;
-const SCREEN_HEIGHT: u32 = 1000;
+#[derive(Default, Debug, Clone, Copy)]
+pub struct Test {
+    x: i32,
+    y: i32,
+    z: i32,
+
+    a: f64,
+    b: f64
+}
+
+const SCREEN_WIDTH: u32 = 800;
+const SCREEN_HEIGHT: u32 = 800;
 
 const GRID_WIDTH: i32 = (SCREEN_WIDTH / 10) as i32;
 const GRID_HEIGHT: i32 = (SCREEN_HEIGHT / 10) as i32;
@@ -49,10 +60,23 @@ pub(crate) fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let sdl_context = sdl2::init()?;
     
+    if args.contains(&String::from("dserver"))
+    {
+        server::createlan();
+        loop {
+            
+        }
+    }
+
     //Read network info(clientid, position) to shared buffer
     if args.contains(&String::from("server"))
     {
-        server::createlan();
+        thread::spawn(|| {
+            server::createlan();
+            loop {
+                
+            }
+        });
     }
     let sharedbuffer = Arc::new(Mutex::new(Vec::<Vec::<u8>>::new()));
     let netbff = sharedbuffer.clone();
@@ -60,16 +84,12 @@ pub(crate) fn run() -> Result<(), String> {
 
     if args.contains(&String::from("connect")) {
         let res = args.binary_search(&String::from("connect")).unwrap();
-        netclient.connect(args.get(res).unwrap().to_string());
+        netclient.connect(args.get(res + 1).unwrap().to_string());
     } else {
         netclient.connect("127.0.0.1".to_string());
     }
 
-    netclient.recieve(move |netbuffer| {
-        
-        let mut buffer = netbff.lock().unwrap();
-        buffer.push(netbuffer.to_vec());
-    });
+    // netclient.recieve();
 
 
 
