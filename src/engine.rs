@@ -8,7 +8,7 @@ use rand::Rng;
 
 //SDL and custom crates
 use player::player_module;
-use sdl2::sys::SDL_GetTicks;
+use sdl2::sys::{SDL_GetTicks, SDL_GetPerformanceCounter, SDL_GetPerformanceFrequency};
 use sdl_degreeproject::datatypes::vector::Custom_Vector2;
 use sdl_degreeproject::networking::{client, server};
 use self::objects::object_module::{Objects, allocate_object};
@@ -20,6 +20,7 @@ use render::render_players;
 use sdl2::mouse::{MouseButton};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use std::{env};
 use sdl2::pixels::Color;
 use sdl2::event::Event;
@@ -109,7 +110,7 @@ pub(crate) fn run() -> Result<(), String> {
     {
         position: Point::new(0, 0), 
         sprite: Rect::new(0,0,16,32), 
-        speed: 0.5,
+        speed: 1000.0,
         player_texture: players,
         player_id: 0,
         text_texture: None    
@@ -142,38 +143,55 @@ pub(crate) fn run() -> Result<(), String> {
     let mut frame_count: usize = 0;
 
     let random_key: (i32,i32) = (rand::thread_rng().gen_range(0..11),rand::thread_rng().gen_range(0..11));
+
+    let mut previousticks: f64 = unsafe { SDL_GetPerformanceCounter() as f64 };
     
 
     'running: loop {
 
-        //println!("{0},{1}",random_key.0,random_key.1);
-        if let Some(a) = grid_map.get_mut(&random_key)
-        {
-            
-        }
-
-
-        let current_ticks = unsafe { SDL_GetTicks() };
-
-        frame_times[frame_count % FRAME_VALUES] = current_ticks - frame_time_last;
-
-        frame_time_last = current_ticks;
         
-        let count: usize;
-        if frame_count < FRAME_VALUES {
-            count = frame_count;
-        }    
-        else {
-        count = FRAME_VALUES;
-        } 
-        frame_count += 1;
 
-        let mut frame_time_average: f32 = 0.0;
+        let ticks:f64 = unsafe { SDL_GetPerformanceCounter() as f64 };
 
-        for i in 0..count {
-            frame_time_average += frame_times[i] as f32;
-        }
-        frame_time_average /= count as f32;
+        let deltaticks = ticks - previousticks;
+
+        previousticks = ticks;
+
+        let _deltatime = deltaticks  / unsafe { SDL_GetPerformanceFrequency() as f64 };
+
+        //println!("{}",_deltatime);
+
+
+        //println!("{0},{1}",random_key.0,random_key.1);
+        // if let Some(a) = grid_map.get_mut(&random_key)
+        // {
+            
+        // }
+
+
+        // let current_ticks = unsafe { SDL_GetTicks() };
+
+        // frame_times[frame_count % FRAME_VALUES] = current_ticks - frame_time_last;
+
+        // frame_time_last = current_ticks;
+        
+        // let count: usize;
+        // if frame_count < FRAME_VALUES {
+        //     count = frame_count;
+        // }    
+        // else {
+        // count = FRAME_VALUES;
+        // } 
+        // frame_count += 1;
+
+        // let mut frame_time_average: f32 = 0.0;
+
+        // for i in 0..count {
+        //     frame_time_average += frame_times[i] as f32;
+        // }
+        // frame_time_average /= count as f32;
+
+
 
 
 
@@ -219,7 +237,9 @@ pub(crate) fn run() -> Result<(), String> {
         check_player_input(&player_input, &mut a);
         a = a.normalize();
         
-        player.position = player.position.offset((-player.speed * a.x * frame_time_average) as i32,(-player.speed * a.y * frame_time_average) as i32);
+        player.position = player.position.offset((-player.speed * a.x * (_deltatime as f32)) as i32,(-player.speed * a.y * (_deltatime as f32)) as i32);
+
+        println!("{}", -player.speed * a.x * (_deltatime as f32));
 
         mouse_position = (event_pump.mouse_state().x(),event_pump.mouse_state().y()).into();
         
@@ -263,7 +283,7 @@ pub(crate) fn run() -> Result<(), String> {
                 }
                 if piece.1.imageid == 1 {
                     match &piece.1.furniture {
-                        Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
+                        Some(furniture) => canvas.copy(&asset_pack,furniture.sprite,furniture.rect).unwrap(),
                         _ => () 
                         }
                 } 
@@ -391,8 +411,10 @@ fn check_hash_tile(_tile_map: &mut HashMap<(i32,i32),Tile>,
                 if let Some(a) = &tile.1.furniture {
                     
                     for i  in -a.object_width+1 ..  a.object_width {
-                        keys_to_modify.push((key.0+i,key.1));
-                    }   
+                        for j  in -a.object_height+1 ..  a.object_height {
+                            keys_to_modify.push((key.0+i,key.1+j));
+                        } 
+                    }    
                 }
             }
             if player_input.m2_is_down && tile.1.occupied{

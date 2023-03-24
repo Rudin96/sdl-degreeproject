@@ -51,9 +51,30 @@ pub struct Objects
                 object_height: 1
             };
 
+            tile.imageid = 0;
             tile.occupied = true;
             tile.furniture = Some(new_piece);
         }
+        if num == 1 {
+            let sprite_rect = Rect::new(36,0,48,96);
+
+            let furn_rect = Rect::new(
+            tile.rect.x as i32,
+            tile.rect.y as i32,
+            tile.rect.width() * 2,
+            tile.rect.height() * 2);
+    
+            let new_piece = Objects {
+                rect: furn_rect,
+                sprite: sprite_rect,
+                object_width: 2,
+                object_height: 2
+            };
+            tile.imageid = 1;
+            tile.occupied = true;
+            tile.furniture = Some(new_piece);
+
+       }
 
         
                             
