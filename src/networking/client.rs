@@ -33,7 +33,7 @@ impl Client {
         println!("Writing data to stream");
     }
 
-    pub fn read<T: std::default::Default>(&mut self) -> &T {
+    pub fn read<T: std::default::Default + std::fmt::Debug>(&mut self) -> T {
         self.stream.read::<T>()
     }
     
@@ -65,6 +65,10 @@ impl Client {
         });
     }
     
+    pub fn clearbuffer(&mut self) {
+        self.stream.clear();
+    }
+
     pub fn connect(&mut self, ipaddress: String) {
         self.recieve();
         self.ipaddress = ipaddress.clone();
