@@ -1,10 +1,10 @@
 use serde::{Serialize, ser::SerializeStruct, Deserialize};
 
-// #[derive(Serialize, Deserialize, Debug)]
-// pub struct Vector2 {
-//     pub x: i32,
-//     pub y: i32
-// }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Custom_Vector2 {
+    pub x: i32,
+    pub y: i32
+}
 
 // impl Serialize for Vector2 {
 //     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

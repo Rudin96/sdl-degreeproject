@@ -22,3 +22,9 @@ features = ["image","ttf"]
 
 [dependencies.datetime]
 version = "0.5"
+
+[dependencies.nalgebra]
+version = "0.32.2"
+
+[dependencies.rand]
+version = "0.8.5"
