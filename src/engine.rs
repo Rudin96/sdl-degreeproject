@@ -50,8 +50,8 @@ pub struct Test {
     b: f64
 }
 
-const SCREEN_WIDTH: u32 = 800;
-const SCREEN_HEIGHT: u32 = 800;
+const SCREEN_WIDTH: u32 = 1600;
+const SCREEN_HEIGHT: u32 = 900;
 
 const GRID_WIDTH: i32 = (SCREEN_WIDTH / 10) as i32;
 const GRID_HEIGHT: i32 = (SCREEN_HEIGHT / 10) as i32;
@@ -122,6 +122,7 @@ pub(crate) fn run() -> Result<(), String> {
     let house_rect = Rect::new(36,0,48,96); //Where in the image do we want to source from?
     let screen_center = Rect::new(0,0,200,200);
 
+    let mut random_tiles: Vec<Tile> = vec![];
 
     let mut img_hash: HashMap<u8,Rect> = HashMap::new();
     create_player_images(&players, &mut img_hash);
@@ -162,10 +163,29 @@ pub(crate) fn run() -> Result<(), String> {
     let mut frame_time_last: u32 = unsafe { SDL_GetTicks() };
     let mut frame_count: usize = 0;
 
-    let random_key: (i32,i32) = (rand::thread_rng().gen_range(0..11),rand::thread_rng().gen_range(0..11));
+    let mut random_keys: Vec<(i32,i32)> = vec![];
+
+    let random_key: (i32,i32) = (rand::thread_rng().gen_range(0..15),rand::thread_rng().gen_range(0..8));
 
     let mut previousticks: f64 = unsafe { SDL_GetPerformanceCounter() as f64 };
+
+    for i in 1..10 {
+        let random_key: (i32,i32) = (rand::thread_rng().gen_range(0..15),rand::thread_rng().gen_range(0..8));
+        random_keys.push(random_key);
+    }
+
+    //I CAN ALLOCATE AND DRAW THEM RANDOMLY BUT I NEED TO FIX THE NEARBY TILES NOT BEING OCCUPIED.
+    for key in random_keys {
+        if let Some(a) = grid_map.get_mut(&key)
+        {
+            allocate_object(a, 1);
+            println!("{}",a.occupied);
+        }
+    }
     
+
+    
+   
 
     'running: loop {
 
@@ -183,41 +203,18 @@ pub(crate) fn run() -> Result<(), String> {
 
 
         //println!("{0},{1}",random_key.0,random_key.1);
-        // if let Some(a) = grid_map.get_mut(&random_key)
-        // {
-            
-        // }
-
-
-        // let current_ticks = unsafe { SDL_GetTicks() };
-
-        // frame_times[frame_count % FRAME_VALUES] = current_ticks - frame_time_last;
-
-        // frame_time_last = current_ticks;
         
-        // let count: usize;
-        // if frame_count < FRAME_VALUES {
-        //     count = frame_count;
-        // }    
-        // else {
-        // count = FRAME_VALUES;
-        // } 
-        // frame_count += 1;
 
-        // let mut frame_time_average: f32 = 0.0;
-
-        // for i in 0..count {
-        //     frame_time_average += frame_times[i] as f32;
+        //println!("{}",a.occupied);
+        
+        // match &piece.1.furniture {
+        //     Some(furniture) => canvas.copy(&asset_pack,furniture.sprite,furniture.rect).unwrap(),
+        //     _ => () 
         // }
-        // frame_time_average /= count as f32;
+
+        
 
 
-
-
-
-
-        // i = (i + 1) % 255;
-        // canvas.set_draw_color(Color::RGB(i, 64, 255-i));
         canvas.set_draw_color(Color::RGB(50,50, 50));
         
 
@@ -283,6 +280,8 @@ pub(crate) fn run() -> Result<(), String> {
         
         sharedbuffer.lock().unwrap().clear();
 
+        
+
         //Allocate and draw grid
         check_hash_tile(&mut grid_map, &mouse_position, &player_input);
         draw_tile_grid(&mut grid_map, &mut canvas, &mut tile_rect);
@@ -327,6 +326,17 @@ pub(crate) fn run() -> Result<(), String> {
 
             //render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&font).unwrap();
         }
+
+
+
+        if let Some(a) = grid_map.get_mut(&random_key)
+        {
+            match &a.furniture {
+                Some(furniture) => canvas.copy(&asset_pack,furniture.sprite,furniture.rect).unwrap(),
+                _ => () 
+                }
+        }
+
         canvas.copy(&asset_pack, house_rect, screen_center).unwrap();
 
         
@@ -409,7 +419,7 @@ fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::ren
 
 fn check_hash_tile(_tile_map: &mut HashMap<(i32,i32),Tile>,
     mouse_position: &Point, 
-    player_input: &player_module::PlayerInput) 
+    player_input: &player_module::PlayerInput,) 
     {
 
     let key = &(mouse_position.x / 100,mouse_position.y/ 100);
