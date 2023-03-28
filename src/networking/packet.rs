@@ -1,25 +1,7 @@
-pub struct PosPacket {
-    i: usize,
-    x: i16,
-    y: i16,
-    z: i16
-}
+use super::client::ConnectionState;
 
-pub struct WorldPacket {
-    i: usize,
-    t: HashMap<i8, Vector2>
-}
-
+#[derive(Default, Clone, Copy, Debug)]
 pub struct ConnectionPacket {
-    i: usize,
-    status: u8,
-}
-
-pub trait Write {
-    fn WriteToStream<T>(val: &T, buffer: &Buffer);
-}
-
-pub struct Schema {
-    player: Player,
-
+    pub i: usize,
+    pub status: ConnectionState,
 }

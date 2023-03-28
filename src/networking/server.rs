@@ -1,12 +1,16 @@
 use std::{net::{UdpSocket, Ipv4Addr, SocketAddr}, thread, collections::HashMap, sync::{Arc, Mutex, mpsc::{channel, Receiver, Sender}}};
+use std::any::type_name;
 use datetime::{LocalDateTime};
 
-use crate::{constvalues::{PORT_NUMBER, BUF_SIZE}};
+use crate::{constvalues::{PORT_NUMBER, BUF_SIZE}, networking::{packet::ConnectionPacket}};
+use super::client::ConnectionState;
+
+use super::stream::Stream;
 
 pub struct Server {
-    netbuffer: (Sender<Vec<u8>>, Receiver<Vec<u8>>),
     connectedclients: Arc<Mutex<HashMap<SocketAddr, LocalDateTime>>>,
-    socket: UdpSocket
+    socket: UdpSocket,
+    stream: Stream
 }
 
 impl Server {
@@ -15,35 +19,32 @@ impl Server {
         println!("Server: Starting listener thread..");
         let socketclone = self.socket.try_clone().unwrap();
         let conclientsclone = self.connectedclients.clone();
+        let mut stream = self.stream.clone();
         thread::spawn(move || {
             loop {
                 let mut buf = vec![0; 512];
+                let mut conclients = conclientsclone.lock().unwrap();
                 let (nob, from) = socketclone.recv_from(&mut buf).unwrap();
+                println!("RECEIVED DATA");
                 let filled_buffer = &buf[..nob];
-                println!("Server: Received packet: {:?} from {}", filled_buffer, from);
-                conclientsclone.lock().unwrap().insert(from, LocalDateTime::now());
+                stream.writetobuffer(filled_buffer);
+                println!("Server: Received packet: {:?} with bytes: {:?} from {}", stream.read::<ConnectionPacket>(), stream.getbuffer(), from);
+                let mut connpacket = stream.read::<ConnectionPacket>();
+                connpacket.status = ConnectionState::CONNECTED;
+                conclients.insert(from, LocalDateTime::now());
+                connpacket.i = conclients.len();
+                stream.clear();
+                stream.write(connpacket);
+                socketclone.send_to(&stream.getbuffer(), from).unwrap();
+                println!("Amount of clients: {}", conclients.len());
             }
         });
-    }
-    
-    fn beginloopingsend(&self) {
-        let socketclone = self.socket.try_clone().unwrap();
-        let conclientsclone = self.connectedclients.clone();
-        println!("Server: Starting sender..");
-        let conclients = conclientsclone.lock().unwrap();
-        loop {
-            for c in conclients.iter() {
-                let buf = self.netbuffer.1.try_recv().unwrap();
-                socketclone.send_to(&buf, c.0).unwrap();
-            }
-            // println!("Send loop");
-        }
     }
 
     fn new() -> Server {
         Server { connectedclients: Arc::new(Mutex::new(HashMap::new())), 
-            netbuffer: channel(), 
-            socket: UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket") }
+            socket: UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket"),
+            stream: Stream::new() }
     }
 }
 
@@ -56,7 +57,7 @@ pub enum ServerType {
 fn create(_servertype: &ServerType) -> Server {
     let server = Server::new();
     server.beginlisten();
-    server.beginloopingsend();
+    // server.beginloopingsend();
     server
 }
 

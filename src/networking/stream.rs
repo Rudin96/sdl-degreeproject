@@ -2,6 +2,7 @@ use std::{mem::size_of};
 
 const BUFFER_SIZE: usize = 128;
 
+#[derive(Clone)]
 pub struct Stream {
     data: Box<[u8; BUFFER_SIZE]>,
     size: usize,
@@ -17,6 +18,10 @@ impl Stream {
         }
     }
 
+    pub fn writetobuffer(&mut self, bytes: &[u8]) {
+        self.data.copy_from_slice(bytes);
+    }
+
     pub fn newbuf(&mut self) {
         self.data = Box::new([0; BUFFER_SIZE]);
         self.size = 0;
@@ -27,6 +32,10 @@ impl Stream {
         self.data = Box::new([0; BUFFER_SIZE]);
         self.index = 0;
         self.size = 0;
+    }
+
+    pub fn getbuffer(&self) -> Box<[u8]> {
+        self.data.clone()
     }
 
     pub fn write<T>(&mut self, val: T)
@@ -54,45 +63,5 @@ impl Stream {
         }
         self.size += size_of::<T>();
         val
-    }
-}
-
-#[derive(Clone, Copy)]
-struct Test {
-    a: f32,
-    b: f32,
-    c: f32,
-    x: i32,
-    y: i32,
-    z: i32,
-}
-
-impl Default for Test {
-    fn default() -> Test {
-        Test {
-            a: 0.0,
-            b: 0.0,
-            c: 0.0,
-            x: 0,
-            y: 0,
-            z: 0,
-        }
-    }
-}
-
-struct GameObject {
-    x: f32,
-    y: f32,
-    z: f32,
-    test: Test,
-}
-
-impl GameObject {
-    fn serialize(&mut self, b: &mut Stream) {
-        b.write(self.test);
-    }
-
-    fn deserialize(&mut self, b: &mut Stream) {
-        self.test = b.read();
     }
 }

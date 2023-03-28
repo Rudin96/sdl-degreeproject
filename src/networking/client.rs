@@ -1,13 +1,13 @@
 use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr, ToSocketAddrs}, thread, str::FromStr, sync::mpsc::{Receiver, Sender, channel}};
 
 
-use crate::{constvalues::{self, PORT_NUMBER}};
+use crate::{constvalues::{self, PORT_NUMBER, BUF_SIZE}};
 
-use super::stream::Stream;
+use super::{stream::Stream, packet::ConnectionPacket};
 
-
+#[derive(Default, Copy, Clone, Debug)]
 pub enum ConnectionState {
-    DISCONNECTED,
+    #[default] DISCONNECTED,
     CONNECTING,
     CONNECTED
 }
@@ -39,30 +39,31 @@ impl Client {
         self.stream.read::<T>()
     }
     
-    fn sendconnectionrequest(&mut self, ipaddress: String) {
+    fn sendconnectionrequest(&mut self) {
         //TODO send a connectrequest packet to server
+        let mut connpacket = ConnectionPacket::default();
+        connpacket.status = ConnectionState::CONNECTING;
+        self.stream.write(connpacket);
+        self.commitdata();
     }
-
-    pub fn commitdata(&self) {
-        loop {
-            let buf = self.buffer.1.try_recv().unwrap();
-            println!("CLIENT: Self IP is: {}", self.ipaddress);
-            self.socket.send_to(&buf, self.ipaddress.as_str()).unwrap();
-        }
+    
+    pub fn commitdata(&mut self) {
+        println!("Commiting data to server");
+        println!("CLIENT: Sending connectionpacket: {:?}, with bytes: {:?}", self.stream.read::<ConnectionPacket>() , self.stream.getbuffer());
+        self.socket.send_to(&self.stream.getbuffer(), self.ipaddress.as_str()).unwrap();
     }
 
     pub fn recieve(&self) {
         let selfsocket = self.socket.try_clone().unwrap();
+        let mut streamclone = self.stream.clone();
         thread::spawn(move || {
             loop {
-                let mut buf = vec![0; 1024];
+                let mut buf = vec![0; BUF_SIZE];
                 println!("Client: Starting receive thread");
                 let (number_of_bytes, _from) = selfsocket.recv_from(&mut buf).expect("Client recieve error");
-                let filled_buf = &mut buf[..number_of_bytes];
-                println!("Client: Received packet from {}", _from);
-                if checkifconnectionreq(&filled_buf) {
-                    println!("Connection successful");
-                }
+                streamclone.writetobuffer(buf.as_slice());
+                let connpacket = streamclone.read::<ConnectionPacket>();
+                println!("Client: Received packet {:?} from {}", connpacket, _from);
             }
         });
     }
@@ -74,8 +75,9 @@ impl Client {
     pub fn connect(&mut self, ipaddress: String) {
         self.recieve();
         self.ipaddress = ipaddress.clone();
+        self.ipaddress.push_str(&format!(":{PORT_NUMBER}"));
+        self.sendconnectionrequest();
         // self.commitdata();
-        // self.sendconnectionrequest(ipaddress.to_string());
     }
 }
 
