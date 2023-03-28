@@ -169,22 +169,54 @@ pub(crate) fn run() -> Result<(), String> {
 
     let mut previousticks: f64 = unsafe { SDL_GetPerformanceCounter() as f64 };
 
-    for i in 1..10 {
+    for i in 0..10 {
         let random_key: (i32,i32) = (rand::thread_rng().gen_range(0..15),rand::thread_rng().gen_range(0..8));
         random_keys.push(random_key);
     }
 
+
     //I CAN ALLOCATE AND DRAW THEM RANDOMLY BUT I NEED TO FIX THE NEARBY TILES NOT BEING OCCUPIED.
-    for key in random_keys {
+    for key in random_keys.iter_mut() {
+
+        let mut keys_to_modify: Vec<(i32,i32)> = vec![];
+
+        loop {
+            if check_and_update_key(&grid_map, key, (0, 0))
+                || check_and_update_key(&grid_map, key, (1, 1))
+                || check_and_update_key(&grid_map, key, (0, 1))
+                || check_and_update_key(&grid_map, key, (1, 0))
+            {
+                continue;
+            }
+            break;
+
+        }
+        
+        println!("X: {}, Y: {}", key.0,key.1);
+            
+    
         if let Some(a) = grid_map.get_mut(&key)
         {
             allocate_object(a, 1);
-            println!("{}",a.occupied);
+            //println!("{}",a.occupied);
+    
+            if let Some(b) = &a.furniture {
+                for i  in -b.object_width+1 ..  b.object_width {
+                    for j  in -b.object_height+1 ..  b.object_height {
+                        keys_to_modify.push((key.0+i,key.1+j));
+                    } 
+                } 
+            }
         }
+    
+        for (_index, tile) in keys_to_modify.iter().enumerate() {
+            if let Some(a) = grid_map.get_mut(tile) {
+                a.occupied = true;
+            }
+        }
+            
+        
     }
-    
-
-    
    
 
     'running: loop {
@@ -284,7 +316,7 @@ pub(crate) fn run() -> Result<(), String> {
 
         //Allocate and draw grid
         check_hash_tile(&mut grid_map, &mouse_position, &player_input);
-        draw_tile_grid(&mut grid_map, &mut canvas, &mut tile_rect);
+        draw_tile_grid(&mut grid_map, &mut canvas);
 
         //Draw objects
         canvas.set_draw_color(Color::RGB(0, 255, 0));
@@ -351,6 +383,78 @@ pub(crate) fn run() -> Result<(), String> {
     // ...
 }
 
+fn generate_random_houses(grid_map: &mut HashMap<(i32, i32), Tile>, key: &mut (i32, i32)) {
+    let mut keys_to_modify = Vec::new();
+        
+    loop {
+        if let Some(a) = grid_map.get(&(key.0,key.1)) {
+            if a.occupied == true
+            {
+                *key = (rand::thread_rng().gen_range(0..15),rand::thread_rng().gen_range(0..8));
+                continue;
+            }
+        }
+        if let Some(a) = grid_map.get(&(key.0+1,key.1+1)) {
+            if a.occupied == true
+            {
+                *key = (rand::thread_rng().gen_range(0..15),rand::thread_rng().gen_range(0..8));
+                continue;
+            }
+        }
+        if let Some(a) = grid_map.get(&(key.0,key.1+1)) {
+            if a.occupied == true
+            {
+                *key = (rand::thread_rng().gen_range(0..15),rand::thread_rng().gen_range(0..8));
+                continue;
+            }
+        }
+        if let Some(a) = grid_map.get(&(key.0+1,key.1)) {
+            if a.occupied == true
+            {
+                *key = (rand::thread_rng().gen_range(0..15),rand::thread_rng().gen_range(0..8));
+                continue;
+            }
+        }
+        break;
+    }
+        
+    println!("X: {}, Y: {}", key.0,key.1);
+        
+
+    if let Some(a) = grid_map.get_mut(&key)
+    {
+        allocate_object(a, 1);
+        //println!("{}",a.occupied);
+
+        if let Some(b) = &a.furniture {
+            for i  in -b.object_width+1 ..  b.object_width {
+                for j  in -b.object_height+1 ..  b.object_height {
+                    keys_to_modify.push((key.0+i,key.1+j));
+                } 
+            } 
+        }
+    }
+
+    for (_index, tile) in keys_to_modify.iter().enumerate() {
+        if let Some(a) = grid_map.get_mut(tile) {
+            a.occupied = true;
+        }
+    }
+}
+
+fn check_and_update_key(grid_map: &HashMap<(i32, i32), Tile>, key: &mut (i32, i32), offset: (i32, i32)) -> bool {
+    if let Some(a) = grid_map.get(&(key.0 + offset.0, key.1 + offset.1)) {
+        if a.occupied {
+            *key = (
+                rand::thread_rng().gen_range(0..15),
+                rand::thread_rng().gen_range(0..8),
+            );
+            return true;
+        }
+    }
+    false
+}
+
 fn check_player_input(player_input: &player_module::PlayerInput, a: &mut nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>) {
     match ( player_input.left_is_held_down,
             player_input.right_is_held_down,
@@ -402,7 +506,7 @@ fn create_player_images(players: &sdl2::render::Texture, img_hash: &mut HashMap<
     }
 }
 
-fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,tile_rect: &mut Rect) {
+fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
     
     for tile in  _tile_map{
         if tile.1.highlight {
