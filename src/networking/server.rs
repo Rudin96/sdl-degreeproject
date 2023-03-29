@@ -57,7 +57,7 @@ impl Server {
             Ok(c) => {
                 println!("SERVER: New connection receieved from {} at {:?}", c.0, c.1);
                 self.connectedclients.insert(c.0, c.1);
-                self.worldpacket.pos.insert(c.1, (0, 0));
+                self.worldpacket.pos.push((c.1, 0, 0));
             },
             Err(_) => {},
         }
@@ -67,7 +67,7 @@ impl Server {
         for c in self.connectedclients.iter() {
             let mut stream = Stream::new();
             println!("SERVER: Sending wpacket: {:?}", &self.worldpacket);
-            stream.write(&self.worldpacket);
+            stream.write(self.worldpacket);
             Self::send(&self.socket, &stream, c.0);
             // println!("SERVER: Sending world state to {}", c.0);
         }

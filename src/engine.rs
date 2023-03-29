@@ -11,6 +11,8 @@ use player::player_module;
 
 use sdl2::sys::{SDL_GetTicks, SDL_GetPerformanceCounter, SDL_GetPerformanceFrequency};
 use sdl_degreeproject::datatypes::vector::Custom_Vector2;
+use sdl_degreeproject::networking::packet::WorldPacket;
+use sdl_degreeproject::networking::stream::Stream;
 use sdl_degreeproject::networking::{client, server};
 use self::objects::object_module::{Objects, allocate_object};
 use self::player::player_module::Player;
@@ -72,21 +74,21 @@ pub(crate) fn run() -> Result<(), String> {
         server::createlan();
     }
     let sharedbuffer = Arc::new(Mutex::new(Vec::<Vec::<u8>>::new()));
-    let netbff = sharedbuffer.clone();
+    let netbff = sharedbuffer.clone();    
+    
     let mut netclient = client::init();
-
     if args.contains(&String::from("connect")) {
         let res = args.binary_search(&String::from("connect")).unwrap();
         netclient.connect(args.get(res + 1).unwrap().to_string());
     } else {
         netclient.connect("127.0.0.1".to_string());
     }
-
+    
     // netclient.recieve();
-
-
-
-
+    
+    
+    
+    
     let video_subsystem = sdl_context.video()?;
     let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).unwrap();
 
@@ -275,6 +277,7 @@ pub(crate) fn run() -> Result<(), String> {
 
         
         sharedbuffer.lock().unwrap().clear();
+
 
         //Allocate and draw grid
         check_hash_tile(&mut grid_map, &mouse_position, &player_input);

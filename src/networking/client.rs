@@ -1,4 +1,4 @@
-use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr, ToSocketAddrs}, thread, str::FromStr, sync::mpsc::{Receiver, Sender, channel}};
+use std::{net::{Ipv4Addr, UdpSocket, SocketAddr, IpAddr, ToSocketAddrs}, thread, str::FromStr, sync::mpsc::{Receiver, Sender, channel}, fmt::Debug};
 
 
 use crate::{constvalues::{self, PORT_NUMBER, BUF_SIZE}, networking::packet::WorldPacket};
@@ -61,8 +61,6 @@ impl Client {
             loop {
                 let mut buf = vec![0; BUF_SIZE];
                 selfsocket.recv_from(&mut buf).expect("Client recieve error");
-                println!("CLIENT: Received packet {:?} from server", buf);
-                println!("Sending buf: {:?} to sharedbuffer", &buf);
                 bufsender.send(buf).unwrap();
             }
         });
@@ -74,17 +72,18 @@ impl Client {
 
     pub fn beginmainloop(&mut self) {
         loop {
+            let mut stream = Stream::new();
             match self.buffer.1.try_recv() {
                 Ok(incbuf) => {
-                    self.stream.writetobuffer(&incbuf);
-                    let worldpacket = self.read::<WorldPacket>();
+                    stream.writetobuffer(&incbuf.as_slice());
+                    let worldpacket = stream.read::<WorldPacket>();
                     println!("CLIENT: Received Worldpacket {:?} from server", worldpacket);
                 },
                 Err(e) => {
 
                 },
             }
-            self.stream.clear();
+            // self.stream.clear();
         }
     }
 

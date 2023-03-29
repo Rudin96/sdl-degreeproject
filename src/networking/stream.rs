@@ -1,10 +1,11 @@
 use std::{mem::size_of};
+use std::fmt::Debug;
 
-const BUFFER_SIZE: usize = 128;
+use crate::constvalues::BUF_SIZE;
 
 #[derive(Clone)]
 pub struct Stream {
-    data: Box<[u8; BUFFER_SIZE]>,
+    data: Box<[u8; BUF_SIZE]>,
     size: usize,
     index: usize,
 }
@@ -12,7 +13,7 @@ pub struct Stream {
 impl Stream {
     pub fn new() -> Stream {
         Stream {
-            data: Box::new([0; BUFFER_SIZE]),
+            data: Box::new([0; BUF_SIZE]),
             size: 0,
             index: 0,
         }
@@ -23,7 +24,7 @@ impl Stream {
     }
 
     pub fn clear(&mut self) {
-        self.data = Box::new([0; BUFFER_SIZE]);
+        self.data = Box::new([0; BUF_SIZE]);
         self.index = 0;
         self.size = 0;
     }
@@ -33,8 +34,6 @@ impl Stream {
     }
 
     pub fn write<T>(&mut self, val: T)
-    where
-        T: Copy,
     {
         unsafe {
             let data_ptr = self.data.as_mut_ptr().add(self.index);
@@ -46,7 +45,7 @@ impl Stream {
 
     pub fn read<T>(&mut self) -> T
     where
-        T: Default,
+        T: Default
     {
         let mut val: T = T::default();
         unsafe {
