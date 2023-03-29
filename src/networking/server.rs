@@ -67,7 +67,7 @@ impl Server {
         for c in self.connectedclients.iter() {
             let mut stream = Stream::new();
             println!("SERVER: Sending wpacket: {:?}", &self.worldpacket);
-            stream.write(self.worldpacket);
+            stream.write(&self.worldpacket);
             Self::send(&self.socket, &stream, c.0);
             // println!("SERVER: Sending world state to {}", c.0);
         }

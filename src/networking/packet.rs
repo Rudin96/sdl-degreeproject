@@ -14,7 +14,7 @@ pub struct TestPacket {
     pub plist: [(i16, i16); 10]
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct WorldPacket {
     pub pos: Vec<(usize, i16, i16)>,
 }
