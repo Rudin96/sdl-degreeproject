@@ -22,12 +22,6 @@ impl Stream {
         self.data.copy_from_slice(bytes);
     }
 
-    pub fn newbuf(&mut self) {
-        self.data = Box::new([0; BUFFER_SIZE]);
-        self.size = 0;
-        self.index = 0;
-    }
-
     pub fn clear(&mut self) {
         self.data = Box::new([0; BUFFER_SIZE]);
         self.index = 0;
@@ -52,7 +46,6 @@ impl Stream {
 
     pub fn read<T>(&mut self) -> T
     where
-        T: Copy,
         T: Default,
     {
         let mut val: T = T::default();

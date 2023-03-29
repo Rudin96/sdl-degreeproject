@@ -62,21 +62,14 @@ pub(crate) fn run() -> Result<(), String> {
     
     if args.contains(&String::from("dserver"))
     {
-        server::createlan();
-        loop {
-            
-        }
+        let serverhandle = server::createlan();
+        serverhandle.join().unwrap();
     }
 
     //Read network info(clientid, position) to shared buffer
     if args.contains(&String::from("server"))
     {
-        thread::spawn(|| {
-            server::createlan();
-            loop {
-                
-            }
-        });
+        server::createlan();
     }
     let sharedbuffer = Arc::new(Mutex::new(Vec::<Vec::<u8>>::new()));
     let netbff = sharedbuffer.clone();
