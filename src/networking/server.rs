@@ -37,6 +37,7 @@ impl Server {
                 socketclone.send_to(&buf, c.0).unwrap();
             }
             // println!("Send loop");
+            ::std::thread::sleep(std::time::Duration::new(1, 0));
         }
     }
 
