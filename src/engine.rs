@@ -5,6 +5,10 @@ mod objects;
 //External Crates
 use nalgebra::Vector2;
 use rand::Rng;
+use noise::{NoiseFn, Perlin};
+
+
+
 
 //SDL and custom crates
 use player::player_module;
@@ -121,8 +125,8 @@ pub(crate) fn run() -> Result<(), String> {
 
     //////////////////////////////////////
 
-    let house_rect = Rect::new(36,0,48,96); //Where in the image do we want to source from?
-    let screen_center = Rect::new(0,0,200,200);
+    //let house_rect = Rect::new(36,0,48,96); //Where in the image do we want to source from?
+    //let screen_center = Rect::new(0,0,200,200);
 
     let mut img_hash: HashMap<u8,Rect> = HashMap::new();
     create_player_images(&players, &mut img_hash);
@@ -157,62 +161,45 @@ pub(crate) fn run() -> Result<(), String> {
     let mut playerpositions: HashMap<u8, (i32, i32)> = HashMap::new();
 
     let mut random_keys: Vec<(i32,i32)> = vec![];
+
+    let mut tile_paths: Vec<Vec<(i32,i32)>> = vec![];
     
-    let mut random_tiles: Vec<Tile> = vec![];
+    let mut random_tiles: Vec<Vec<Tile>> = vec![];
+
+    let perlin = Perlin::default();
 
     let mut previousticks: f64 = unsafe { SDL_GetPerformanceCounter() as f64 };
 
 
-    for i in 0..5 {
-        let random_key: (i32,i32) = (rand::thread_rng().gen_range(0..16),rand::thread_rng().gen_range(0..9));
+    
+    //Perlin LMAOOO
+    for i in 0..10 {
+
+        let random_key1: (i32,i32) = (rand::thread_rng().gen_range(0..16),rand::thread_rng().gen_range(0..9));
+        let random_key2: (i32,i32) = (rand::thread_rng().gen_range(0..16),rand::thread_rng().gen_range(0..9));
+        
+        let point1 = [random_key1.0 as f64, random_key1.1 as f64];
+        let raw_noise1 = perlin.get(point1);
+        let noise1 = ((raw_noise1 + 1.0) / 2.0 * 16.0).round() as i32;
+
+        let point2 = [random_key2.0 as f64, random_key2.1 as f64];
+        let raw_noise2 = perlin.get(point2);
+        let noise2 = ((raw_noise2 + 1.0) / 2.0 * 16.0).round() as i32;
+
+        
+        let random_key = (noise1,noise2);
+
         random_keys.push(random_key);
     }
     
     for key in random_keys.iter_mut() {
 
-        let mut keys_to_modify: Vec<(i32,i32)> = vec![];
-
-        loop {
-            if check_and_update_key(&grid_map, key, (0, 0))
-                || check_and_update_key(&grid_map, key, (1, 1))
-                || check_and_update_key(&grid_map, key, (0, 1))
-                || check_and_update_key(&grid_map, key, (1, 0))
-            {
-                continue;
-            }
-            break;
-
-        }
-    
-        if let Some(a) = grid_map.get_mut(&key)
-        {
-            allocate_object(a, 1);
-    
-            if let Some(b) = &a.furniture {
-                for i  in -b.object_width+1 ..  b.object_width {
-                    for j  in -b.object_height+1 ..  b.object_height {
-                        keys_to_modify.push((key.0+i,key.1+j));
-                    } 
-                } 
-            }
-        }
-    
-        for key in keys_to_modify {
-            if let Some(a) = grid_map.get_mut(&key) {
-                a.occupied = true;
-            }
-        }
-
-
-        println!("X: {}, Y: {}",key.0,key.1);
-
+        allocate_nearby_tiles(&mut grid_map, key);
     }
 
     //Check difference between the two tiles
-    println!("X Diff: {}, Y Diff: {} ",random_keys[0].0 - random_keys[1].0, random_keys[0].1 - random_keys[1].1);
+    //println!("X Diff: {}, Y Diff: {} ",random_keys[0].0 - random_keys[1].0, random_keys[0].1 - random_keys[1].1);
 
-
-    
 
     if let Some(a) = random_keys.get(1) {
         println!("{} : {}",a.0,a.1)
@@ -229,8 +216,6 @@ pub(crate) fn run() -> Result<(), String> {
         previousticks = ticks;
 
         let _deltatime = deltaticks  / unsafe { SDL_GetPerformanceFrequency() as f64 };      
-
-
 
         canvas.set_draw_color(Color::RGB(50,50, 50));
         
@@ -343,25 +328,8 @@ pub(crate) fn run() -> Result<(), String> {
 
         for i in 1..random_keys.len() {
             let mut random_tile_x= 0;
-            draw_paths(&random_keys, i, &mut grid_map, &mut random_tile_x, &mut canvas);
+            draw_paths(&mut tile_paths,&random_keys, i, &mut grid_map, &mut random_tile_x, &mut canvas);
         }
-
-    
-
-
-        // for j in 0..random_keys[0].1 - random_keys[1].1 {
-        //     if let Some(a) = grid_map.get_mut(&(2,2))
-        //     {
-        //         let b = Rect::new(a.rect.x + ( a.rect.width() * x_val as u32) as i32,a.rect.y + ( a.rect.height() * j as u32) as i32,a.rect.width(),a.rect.width());
-                
-        //         canvas.set_draw_color(Color::RED);
-        //         canvas.fill_rect(b).unwrap();
-                
-        //         //println!("{}",b.x);
-        //     }
-        // }
-    
-
 
         for i in 0..random_keys.len()  {
             if let Some(a) = grid_map.get_mut(&random_keys[i])
@@ -371,28 +339,74 @@ pub(crate) fn run() -> Result<(), String> {
                     _ => () 
                     }
             } 
-        }
-        
-
-        //canvas.copy(&asset_pack, house_rect, screen_center).unwrap();
-
-        
+        }        
         canvas.present();
-        
-    }
 
+
+        tile_paths.clear();
+
+    }
     Ok(())
 
 }
 
-fn draw_paths(random_keys: &Vec<(i32, i32)>, i: usize, grid_map: &mut HashMap<(i32, i32), Tile>, random_tile_x: &mut i32, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
+fn allocate_nearby_tiles(grid_map: &mut HashMap<(i32, i32), Tile>, key: &mut (i32, i32)) {
+    let mut keys_to_modify: Vec<(i32,i32)> = vec![];
+
+    loop {
+        if check_and_update_key(&*grid_map, key, (0, 0))
+            || check_and_update_key(&*grid_map, key, (1, 1))
+            || check_and_update_key(&*grid_map, key, (0, 1))
+            || check_and_update_key(&*grid_map, key, (1, 0))
+        {
+            continue;
+        }
+        break;
+
+    }
+    
+    if let Some(a) = grid_map.get_mut(&key)
+    {
+        allocate_object(a, 1);
+    
+        if let Some(b) = &a.furniture {
+            for i  in -b.object_width+1 ..  b.object_width {
+                for j  in -b.object_height+1 ..  b.object_height {
+                    keys_to_modify.push((key.0+i,key.1+j));
+                } 
+            } 
+        }
+    }
+    
+    for key in keys_to_modify {
+        if let Some(a) = grid_map.get_mut(&key) {
+            a.occupied = true;
+        }
+    }
+}
+
+fn draw_paths(path_collection: &mut Vec<Vec<(i32,i32)>>,random_keys: &Vec<(i32, i32)>, i: usize, grid_map: &mut HashMap<(i32, i32), Tile>, random_tile_x: &mut i32, canvas: &mut sdl2::render::Canvas<sdl2::video::Window>) {
+
+
+    let mut tile_path: Vec<(i32,i32)> = vec![];
+
     if &random_keys[i-1].0 - &random_keys[i].0 < 0 {
         for k in (0..=(&random_keys[i-1].0 - &random_keys[i].0).abs()).rev() {
 
             if let Some(a) = grid_map.get_mut(&(&random_keys[i as usize]))
             {
                 let b = Rect::new(a.rect.x + ( a.rect.w * -k),a.rect.y,a.rect.width(),a.rect.height());
-                *random_tile_x = (&random_keys[i-1].0 - &random_keys[i].0);
+                *random_tile_x = &random_keys[i-1].0 - &random_keys[i].0;
+
+                let tile_key = (b.x / 100,b.y/100);
+
+                if let Some(path_tile) = grid_map.get_mut(&tile_key)
+                {
+                    path_tile.occupied = true;
+                }
+
+                tile_path.push((b.x,b.y));
+
                 canvas.set_draw_color(Color::RED);
                 canvas.fill_rect(b).unwrap();
             }
@@ -405,7 +419,17 @@ fn draw_paths(random_keys: &Vec<(i32, i32)>, i: usize, grid_map: &mut HashMap<(i
             if let Some(a) = grid_map.get_mut(&(&random_keys[i as usize]))
             {
                 let b = Rect::new(a.rect.x + ( a.rect.w * k),a.rect.y,a.rect.width(),a.rect.height());
+
+                let tile_key = (b.x / 100,b.y/100);
+
+                if let Some(path_tile) = grid_map.get_mut(&tile_key)
+                {
+                    path_tile.occupied = true;
+                }
+                
                 *random_tile_x = k;
+
+                tile_path.push((b.x,b.y));
                 canvas.set_draw_color(Color::RED);
                 canvas.fill_rect(b).unwrap();
             }
@@ -419,6 +443,15 @@ fn draw_paths(random_keys: &Vec<(i32, i32)>, i: usize, grid_map: &mut HashMap<(i
             if let Some(a) = grid_map.get_mut(&(&random_keys[i as usize]))
             {
                 let b = Rect::new(a.rect.x + ( a.rect.w * *random_tile_x),a.rect.y + ( a.rect.h * -k),a.rect.width(),a.rect.height());
+
+                let tile_key = (b.x / 100,b.y/100);
+
+                if let Some(path_tile) = grid_map.get_mut(&tile_key)
+                {
+                    path_tile.occupied = true;
+                }
+
+                tile_path.push((b.x,b.y));
                 canvas.set_draw_color(Color::RED);
                 canvas.fill_rect(b).unwrap();
             }
@@ -430,12 +463,25 @@ fn draw_paths(random_keys: &Vec<(i32, i32)>, i: usize, grid_map: &mut HashMap<(i
 
             if let Some(a) = grid_map.get_mut(&(&random_keys[i as usize]))
             {
-                let b = Rect::new(a.rect.x + ( a.rect.w * *random_tile_x),a.rect.y + ( a.rect.h * k),a.rect.width(),a.rect.height());                       
+                let b = Rect::new(a.rect.x + ( a.rect.w * *random_tile_x),a.rect.y + ( a.rect.h * k),a.rect.width(),a.rect.height());    
+
+                let tile_key = (b.x / 100,b.y/100);
+
+                if let Some(path_tile) = grid_map.get_mut(&tile_key)
+                {
+                    path_tile.occupied = true;
+                }         
+                tile_path.push((b.x,b.y));
                 canvas.set_draw_color(Color::RED);
                 canvas.fill_rect(b).unwrap();
             }
         }
     }
+
+
+    path_collection.push(tile_path);
+
+
 }
 
 fn check_and_update_key(grid_map: &HashMap<(i32, i32), Tile>, key: &mut (i32, i32), offset: (i32, i32)) -> bool {
