@@ -23,22 +23,20 @@ impl Server {
         thread::spawn(move || {
             loop {
                 let mut stream = Stream::new();
-                let mut buf = vec![0; 512];
+                let mut buf = vec![0; BUF_SIZE];
                 match socketclone.recv_from(&mut buf) {
                     Ok(d) => {
-                        println!("SERVER: RECEIVED DATA");
-                        let filled_buffer = &buf[..d.0];
-                        stream.writetobuffer(filled_buffer);
-                        // println!("SERVER: Received packet: {:?}, from {}", stream.read::<ConnectionPacket>(), from);
-                        let mut connpacket = stream.read::<ConnectionPacket>();
-                        connpacket.status = ConnectionState::CONNECTED;
-                        connpacket.i = clindex;
+                        let mut connpacket = stream.readfrombuffer::<ConnectionPacket>(&buf[..d.0]).clone();
                         conclientssender.send((d.1, clindex)).unwrap();
-                        clindex += 1;
+                        connpacket.i = clindex;
+                        connpacket.status = ConnectionState::CONNECTED;
                         stream.write(connpacket);
                         Self::send(&socketclone, &stream, &d.1);
+                        clindex += 1;
                     },
-                    Err(d) => {println!("SERVER: Error receiving data from client, disconnect here")},
+                    Err(d) => {
+                        println!("SERVER: Error receiving data from client, disconnect here, message: {:?}", d.into_inner());
+                    },
                 }
             }
         });
@@ -56,8 +54,8 @@ impl Server {
         match self.connectedclientssender.1.try_recv() {
             Ok(c) => {
                 println!("SERVER: New connection receieved from {} at {:?}", c.0, c.1);
-                self.connectedclients.insert(c.0, c.1);
-                self.worldpacket.pos.push((c.1, 0, 0));
+                    self.connectedclients.insert(c.0, c.1);
+                    self.worldpacket.pos.insert(c.1, (0, 0));
             },
             Err(_) => {},
         }
@@ -66,14 +64,14 @@ impl Server {
     fn senddatatoclients(&self) {
         for c in self.connectedclients.iter() {
             let mut stream = Stream::new();
-            println!("SERVER: Sending wpacket: {:?}", &self.worldpacket);
             stream.write(&self.worldpacket);
-            Self::send(&self.socket, &stream, c.0);
-            // println!("SERVER: Sending world state to {}", c.0);
+            Self::send(&self.socket, &mut stream, c.0);
+            println!("SERVER: Sending world state to {}", c.0);
         }
     }
     
     fn send(socket: &UdpSocket, stream: &Stream, to: &SocketAddr) {
+        // println!("SERVER: Sending wpacket: {:?}", &stream.read::<WorldPacket>());
         socket.send_to(&stream.getbuffer(), to).unwrap();
     }
 

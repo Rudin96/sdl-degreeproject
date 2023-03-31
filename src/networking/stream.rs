@@ -1,4 +1,4 @@
-use std::{mem::size_of};
+use std::{mem::size_of, fmt::Debug};
 
 use crate::constvalues::BUF_SIZE;
 
@@ -35,24 +35,31 @@ impl Stream {
     pub fn write<T>(&mut self, val: T)
     {
         unsafe {
-            let data_ptr = self.data.as_mut_ptr().add(self.index);
-            let val_ptr = &val as *const T as *const u8;
-            std::ptr::copy_nonoverlapping(val_ptr, data_ptr, size_of::<T>());
+            *((self.data.as_mut_ptr().add(self.index)) as *mut T) = val;
+            // let data_ptr = self.data.as_mut_ptr().add(self.index);
+            // let val_ptr = &val as *const T as *const u8;
+            // std::ptr::copy_nonoverlapping(val_ptr, data_ptr, size_of::<T>());
+            self.index += 1;
         }
-        self.index += size_of::<T>();
+    }
+    
+    pub fn read<T>(&mut self) -> &T
+    {
+        unsafe {
+            // let data_ptr = self.data.as_mut_ptr().add(self.size);
+            // let val: &T = &*(data_ptr as *mut T);
+            // println!("READER: val ref is: {:#?}", val);
+            // self.size += 1;
+            // val
+            let x = &*((self.data.as_mut_ptr().add(self.size)) as *mut T);
+            self.size += 1;
+            x
+        }
     }
 
-    pub fn read<T>(&mut self) -> T
-    where
-        T: Default
-    {
-        let mut val: T = T::default();
+    pub fn readfrombuffer<T>(&mut self, buf: &[u8]) -> &T {
         unsafe {
-            let data_ptr = self.data.as_ptr().add(self.size);
-            let val_ptr = &mut val as *mut T as *mut u8;
-            std::ptr::copy_nonoverlapping(data_ptr, val_ptr, size_of::<T>());
+            &*(buf.as_ptr() as *const T)
         }
-        self.size += size_of::<T>();
-        val
     }
 }

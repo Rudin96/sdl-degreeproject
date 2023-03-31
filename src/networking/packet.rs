@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::client::ConnectionState;
 
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct ConnectionPacket {
     pub i: usize,
     pub status: ConnectionState,
@@ -16,11 +16,16 @@ pub struct TestPacket {
 
 #[derive(Clone, Debug)]
 pub struct WorldPacket {
-    pub pos: Vec<(usize, i16, i16)>,
+    pub pos: HashMap<usize, (i32, i32)>,
 }
 
 impl Default for WorldPacket {
     fn default() -> Self {
-        Self { pos: Vec::new() }
+        Self { pos: HashMap::new() }
+    }
+}
+impl Default for ConnectionPacket {
+    fn default() -> Self {
+        Self { i: 0, status: ConnectionState::DISCONNECTED }
     }
 }

@@ -16,41 +16,41 @@ pub struct Client {
     socket: UdpSocket,
     buffer: (Sender<Vec<u8>>, Receiver<Vec<u8>>),
     ipaddress: String,
-    stream: Stream,
+    // stream: Stream,
     pub id: u8,
     pub connstate: ConnectionState
 }
 
 impl Client {
-    pub fn write<T: Copy>(&mut self, data: T) {
-        self.stream.write(data);
-        println!("Writing data to stream");
-    }
+    // pub fn write<T>(&mut self, data: T) {
+    //     self.stream.write(data);
+    //     println!("Writing data to stream");
+    // }
 
-    pub fn read<T: Default>(&mut self) -> T {
-        self.stream.read::<T>()
-    }
+    // pub fn read<T>(&mut self) -> &T {
+    //     self.stream.read::<T>()
+    // }
     
     fn sendconnectionrequest(&mut self) {
         //TODO send a connectrequest packet to server
         let mut connpacket = ConnectionPacket::default();
         connpacket.status = ConnectionState::CONNECTING;
-        self.stream.write(connpacket);
-        self.commitdata();
-        let mut buf = vec![0; 128];
+        let mut stream = Stream::new();
+        stream.write(connpacket);
+        self.commitdata(&mut stream);
+        let mut buf = vec![0; BUF_SIZE];
         self.socket.recv(&mut buf).unwrap();
-        self.stream.writetobuffer(buf.as_slice());
-        let connpacket = self.stream.read::<ConnectionPacket>();
+        let connpacket = stream.readfrombuffer::<ConnectionPacket>(&buf[..]);
         println!("CLIENT: Received connection packet: {:?}", connpacket);
         self.connstate = connpacket.status;
         self.recieve();
         self.beginmainloop();
     }
     
-    pub fn commitdata(&mut self) {
+    pub fn commitdata(&mut self, stream: &mut Stream) {
         println!("CLIENT: Commiting data to server");
-        // println!("CLIENT: Sending packet with bytes: {:?}", &self.stream.getbuffer());
-        self.socket.send_to(&self.stream.getbuffer(), self.ipaddress.as_str()).unwrap();
+        // println!("CLIENT: Sending packet with bytes: {:?}", &stream.getbuffer());
+        self.socket.send_to(&stream.getbuffer(), self.ipaddress.as_str()).unwrap();
     }
 
     pub fn recieve(&self) {
@@ -62,25 +62,26 @@ impl Client {
                 let mut buf = vec![0; BUF_SIZE];
                 selfsocket.recv_from(&mut buf).expect("Client recieve error");
                 bufsender.send(buf).unwrap();
+                println!("CLIENT: RECEIVING DATA FROM SERVER");
             }
         });
     }
     
-    pub fn clearbuffer(&mut self) {
-        self.stream.clear();
-    }
+    // pub fn clearbuffer(&mut self) {
+    //     self.stream.clear();
+    // }
 
     pub fn beginmainloop(&mut self) {
         loop {
             let mut stream = Stream::new();
             match self.buffer.1.try_recv() {
                 Ok(incbuf) => {
-                    stream.writetobuffer(&incbuf.as_slice());
-                    let worldpacket = stream.read::<WorldPacket>();
+                    let worldpacket = stream.readfrombuffer::<WorldPacket>(&incbuf);
                     println!("CLIENT: Received Worldpacket {:?} from server", worldpacket);
                 },
                 Err(e) => {
-
+                    self.connstate = ConnectionState::DISCONNECTED;
+                    println!("CLIENT: Stopped receiving from server, disconnecting!");
                 },
             }
             // self.stream.clear();
@@ -97,11 +98,9 @@ impl Client {
 pub fn init() -> Client {
     let sock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0);
     let socket = UdpSocket::bind(sock_addr).expect("Error binding to socket");
-    let newclient = Client { socket, 
+    Client { socket, 
         ipaddress: Ipv4Addr::UNSPECIFIED.to_string(), 
-        id: 0, connstate: ConnectionState::DISCONNECTED, 
-        stream: Stream::new(),
+        id: 0, connstate: ConnectionState::DISCONNECTED,
         buffer: channel()
-     };
-    newclient
+    }
 }
