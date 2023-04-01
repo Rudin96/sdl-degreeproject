@@ -60,9 +60,9 @@ impl Client {
         thread::spawn(move || {
             loop {
                 let mut buf = vec![0; BUF_SIZE];
+                println!("CLIENT: RECEIVING DATA FROM SERVER");
                 selfsocket.recv_from(&mut buf).expect("Client recieve error");
                 bufsender.send(buf).unwrap();
-                println!("CLIENT: RECEIVING DATA FROM SERVER");
             }
         });
     }
@@ -81,7 +81,7 @@ impl Client {
                 },
                 Err(e) => {
                     self.connstate = ConnectionState::DISCONNECTED;
-                    println!("CLIENT: Stopped receiving from server, disconnecting!");
+                    // println!("CLIENT: Stopped receiving from server, disconnecting!");
                 },
             }
             // self.stream.clear();
