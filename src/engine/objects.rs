@@ -61,14 +61,14 @@ pub struct Objects
             let furn_rect = Rect::new(
             tile.rect.x as i32,
             tile.rect.y as i32,
-            tile.rect.width() * 2,
-            tile.rect.height() * 2);
+            tile.rect.width() * 1,
+            tile.rect.height() * 1);
     
             let new_piece = Objects {
                 rect: furn_rect,
                 sprite: sprite_rect,
-                object_width: 2,
-                object_height: 2
+                object_width: 1,
+                object_height: 1
             };
             tile.imageid = 1;
             tile.occupied = true;

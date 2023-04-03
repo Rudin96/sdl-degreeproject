@@ -5,10 +5,15 @@ mod objects;
 //External Crates
 use nalgebra::Vector2;
 use rand::Rng;
+use noise::{NoiseFn, Perlin};
+
+
+
 
 //SDL and custom crates
 use player::player_module;
 
+use sdl2::render::Texture;
 use sdl2::sys::{SDL_GetTicks, SDL_GetPerformanceCounter, SDL_GetPerformanceFrequency};
 use sdl_degreeproject::datatypes::vector::Custom_Vector2;
 use sdl_degreeproject::networking::{client, server};
@@ -50,8 +55,8 @@ pub struct Test {
     b: f64
 }
 
-const SCREEN_WIDTH: u32 = 800;
-const SCREEN_HEIGHT: u32 = 800;
+const SCREEN_WIDTH: u32 = 1600;
+const SCREEN_HEIGHT: u32 = 900;
 
 const GRID_WIDTH: i32 = (SCREEN_WIDTH / 10) as i32;
 const GRID_HEIGHT: i32 = (SCREEN_HEIGHT / 10) as i32;
@@ -73,9 +78,9 @@ pub(crate) fn run() -> Result<(), String> {
     {
         thread::spawn(|| {
             server::createlan();
-            loop {
+            // loop {
                 
-            }
+            // }
         });
     }
     let sharedbuffer = Arc::new(Mutex::new(Vec::<Vec::<u8>>::new()));
@@ -93,7 +98,7 @@ pub(crate) fn run() -> Result<(), String> {
 
 
 
-
+    //TODO: Break this down into separate call////////////////////
     let video_subsystem = sdl_context.video()?;
     let _image_context = image::init(InitFlag::PNG | InitFlag::PNG).unwrap();
 
@@ -102,7 +107,7 @@ pub(crate) fn run() -> Result<(), String> {
         .build()
         .unwrap();
 
-    let mut canvas = window.into_canvas().build().unwrap();
+    let mut canvas = window.into_canvas().accelerated().present_vsync().build().unwrap();
 
     let texture_creator = canvas.texture_creator();
 
@@ -114,13 +119,18 @@ pub(crate) fn run() -> Result<(), String> {
     font.set_style(sdl2::ttf::FontStyle::NORMAL);
     
 
-    let texture = texture_creator.load_texture("face.png")?;
+    //let texture = texture_creator.load_texture("face.png")?;
     let catman = texture_creator.load_texture("catman.png")?;
     let players = texture_creator.load_texture("characters.png")?;
-    let asset_pack = texture_creator.load_texture("First Asset pack.png")?;
+    let asset_pack = texture_creator.load_texture("First_Asset_pack.png")?;
+    let grass = texture_creator.load_texture("Grass2.png")?;
 
-    let house_rect = Rect::new(36,0,48,96); //Where in the image do we want to source from?
-    let screen_center = Rect::new(0,0,200,200);
+    //////////////////////////////////////
+
+    //let house_rect = Rect::new(36,0,48,96); //Where in the image do we want to source from?
+    //let screen_center = Rect::new(0,0,200,200);
+
+    let road_rect = Rect::new(216,156,36,36);
 
 
     let mut img_hash: HashMap<u8,Rect> = HashMap::new();
@@ -148,8 +158,6 @@ pub(crate) fn run() -> Result<(), String> {
     let columns  =  GRID_WIDTH;
 
     let mut grid_map: HashMap<(i32,i32),Tile> = HashMap::new();
-
-    let mut tile_rect = Rect::new(0,0,0,0);
     
     create_hash_grid(&rows, &columns, &mut grid_map);
 
@@ -157,67 +165,62 @@ pub(crate) fn run() -> Result<(), String> {
 
     let mut playerpositions: HashMap<u8, (i32, i32)> = HashMap::new();
 
-    const FRAME_VALUES: usize = 10;
-    let mut frame_times: [u32; FRAME_VALUES] = [0; FRAME_VALUES];
-    let mut frame_time_last: u32 = unsafe { SDL_GetTicks() };
-    let mut frame_count: usize = 0;
+    let mut random_keys: Vec<(i32,i32)> = vec![];
 
-    let random_key: (i32,i32) = (rand::thread_rng().gen_range(0..11),rand::thread_rng().gen_range(0..11));
+    let mut tile_paths: Vec<Vec<(i32,i32)>> = vec![];
+    
+    let mut random_tiles: Vec<Vec<Tile>> = vec![];
+
+    let perlin = Perlin::default();
 
     let mut previousticks: f64 = unsafe { SDL_GetPerformanceCounter() as f64 };
-    
 
+
+    
+    //Perlin LMAOOO
+    for i in 0..10 {
+
+        let random_key1: (i32,i32) = (rand::thread_rng().gen_range(0..16),rand::thread_rng().gen_range(0..9));
+        let random_key2: (i32,i32) = (rand::thread_rng().gen_range(0..16),rand::thread_rng().gen_range(0..9));
+        
+        let point1 = [random_key1.0 as f64, random_key1.1 as f64];
+        let raw_noise1 = perlin.get(point1);
+        let noise1 = ((raw_noise1 + 1.0) / 2.0 * 16.0).round() as i32;
+
+        let point2 = [random_key2.0 as f64, random_key2.1 as f64];
+        let raw_noise2 = perlin.get(point2);
+        let noise2 = ((raw_noise2 + 1.0) / 2.0 * 16.0).round() as i32;
+
+        
+        let random_key = (noise1,noise2);
+
+        random_keys.push(random_key);
+    }
+    
+    for key in random_keys.iter_mut() {
+
+        allocate_nearby_tiles(&mut grid_map, key);
+    }
+
+    //Check difference between the two tiles
+    //println!("X Diff: {}, Y Diff: {} ",random_keys[0].0 - random_keys[1].0, random_keys[0].1 - random_keys[1].1);
+
+
+    // if let Some(a) = random_keys.get(1) {
+    //     println!("{} : {}",a.0,a.1)
+    // }
+   
     'running: loop {
 
         
-
         let ticks:f64 = unsafe { SDL_GetPerformanceCounter() as f64 };
 
         let deltaticks = ticks - previousticks;
 
         previousticks = ticks;
 
-        let _deltatime = deltaticks  / unsafe { SDL_GetPerformanceFrequency() as f64 };
+        let _deltatime = deltaticks  / unsafe { SDL_GetPerformanceFrequency() as f64 };      
 
-        //println!("{}",_deltatime);
-
-
-        //println!("{0},{1}",random_key.0,random_key.1);
-        // if let Some(a) = grid_map.get_mut(&random_key)
-        // {
-            
-        // }
-
-
-        // let current_ticks = unsafe { SDL_GetTicks() };
-
-        // frame_times[frame_count % FRAME_VALUES] = current_ticks - frame_time_last;
-
-        // frame_time_last = current_ticks;
-        
-        // let count: usize;
-        // if frame_count < FRAME_VALUES {
-        //     count = frame_count;
-        // }    
-        // else {
-        // count = FRAME_VALUES;
-        // } 
-        // frame_count += 1;
-
-        // let mut frame_time_average: f32 = 0.0;
-
-        // for i in 0..count {
-        //     frame_time_average += frame_times[i] as f32;
-        // }
-        // frame_time_average /= count as f32;
-
-
-
-
-
-
-        // i = (i + 1) % 255;
-        // canvas.set_draw_color(Color::RGB(i, 64, 255-i));
         canvas.set_draw_color(Color::RGB(50,50, 50));
         
 
@@ -283,34 +286,13 @@ pub(crate) fn run() -> Result<(), String> {
         
         sharedbuffer.lock().unwrap().clear();
 
+        
+
         //Allocate and draw grid
         check_hash_tile(&mut grid_map, &mouse_position, &player_input);
-        draw_tile_grid(&mut grid_map, &mut canvas, &mut tile_rect);
+        draw_tile_grid(&mut grid_map, &mut canvas, &grass);
 
-        //Draw objects
-        canvas.set_draw_color(Color::RGB(0, 255, 0));
-        for piece in &grid_map {
-
-            if piece.1.furniture.is_some() && piece.1.occupied {
-
-                if piece.1.imageid == 0 {
-                    match &piece.1.furniture {
-                        Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
-                        _ => () 
-                        }
-                    } 
-                }
-                if piece.1.imageid == 1 {
-                    match &piece.1.furniture {
-                        Some(furniture) => canvas.copy(&asset_pack,furniture.sprite,furniture.rect).unwrap(),
-                        _ => () 
-                        }
-                } 
-                
-        }
-
-
-
+        
 
         for playerclient in &playerpositions {
 
@@ -325,20 +307,217 @@ pub(crate) fn run() -> Result<(), String> {
 
             render_text(&mut canvas, &text_texture, playerclient).unwrap();
 
-            //render_player(&mut canvas, Color::RGB(i, 64, 255 - i),&player,&font).unwrap();
         }
-        canvas.copy(&asset_pack, house_rect, screen_center).unwrap();
 
+
+
+        for i in 1..random_keys.len() {
+            let mut random_tile_x= 0;
+            draw_paths(&mut tile_paths,&random_keys, i, &mut grid_map, &mut random_tile_x, &mut canvas,&asset_pack);
+        }
+
+        for i in 0..random_keys.len()  {
+            if let Some(a) = grid_map.get_mut(&random_keys[i])
+            {
+                match &a.furniture {
+                    Some(furniture) => canvas.copy(&asset_pack,furniture.sprite,furniture.rect).unwrap(),
+                    _ => () 
+                    }
+            } 
+        }        
+
+        //Draw objects
+        canvas.set_draw_color(Color::RGB(0, 255, 0));
+        for piece in &grid_map {
+
+            if piece.1.furniture.is_some() && piece.1.occupied {
+
+                if piece.1.imageid == 0 {
+                    match &piece.1.furniture {
+                     Some(furniture) => canvas.copy(&catman,furniture.sprite,furniture.rect).unwrap(),
+                     _ => () 
+                    }
+                } 
+            }
+                if piece.1.imageid == 1 {
+                    match &piece.1.furniture {
+                    Some(furniture) => canvas.copy(&asset_pack,furniture.sprite,furniture.rect).unwrap(),
+                     _ => () 
+                }
+            } 
+        }
         
         canvas.present();
 
-        
-        //::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));
-        
+
+        tile_paths.clear();
+
+    }
+    Ok(())
+
+}
+
+fn allocate_nearby_tiles(grid_map: &mut HashMap<(i32, i32), Tile>, key: &mut (i32, i32)) {
+    let mut keys_to_modify: Vec<(i32,i32)> = vec![];
+
+    loop {
+        if check_and_update_key(&*grid_map, key, (0, 0))
+            || check_and_update_key(&*grid_map, key, (1, 1))
+            || check_and_update_key(&*grid_map, key, (0, 1))
+            || check_and_update_key(&*grid_map, key, (1, 0))
+        {
+            continue;
+        }
+        break;
+
+    }
+    
+    if let Some(a) = grid_map.get_mut(&key)
+    {
+        allocate_object(a, 1);
+    
+        if let Some(b) = &a.furniture {
+            for i  in -b.object_width+1 ..  b.object_width {
+                for j  in -b.object_height+1 ..  b.object_height {
+                    keys_to_modify.push((key.0+i,key.1+j));
+                } 
+            } 
+        }
+    }
+    
+    for key in keys_to_modify {
+        if let Some(a) = grid_map.get_mut(&key) {
+            a.occupied = true;
+        }
+    }
+}
+
+fn draw_paths(
+    path_collection: &mut Vec<Vec<(i32,i32)>>,
+    random_keys: &Vec<(i32, i32)>, i: usize, 
+    grid_map: &mut HashMap<(i32, i32), Tile>, 
+    random_tile_x: &mut i32, 
+    canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+    road_texture: &Texture
+) {
+
+    let road_rect = Rect::new(216,156,36,36);
+
+    let mut tile_path: Vec<(i32,i32)> = vec![];
+
+    if &random_keys[i-1].0 - &random_keys[i].0 < 0 {
+        for k in (0..=(&random_keys[i-1].0 - &random_keys[i].0).abs()).rev() {
+
+            if let Some(a) = grid_map.get_mut(&(&random_keys[i as usize]))
+            {
+                let b = Rect::new(a.rect.x + ( a.rect.w * -k),a.rect.y,a.rect.width(),a.rect.height());
+                *random_tile_x = &random_keys[i-1].0 - &random_keys[i].0;
+
+                let tile_key = (b.x / 100,b.y/100);
+
+                if let Some(path_tile) = grid_map.get_mut(&tile_key)
+                {
+                    path_tile.occupied = true;
+                }
+
+                tile_path.push((b.x,b.y));
+
+                canvas.copy(&road_texture, road_rect, b).unwrap();
+
+                //canvas.set_draw_color(Color::RED);
+                //canvas.fill_rect(b).unwrap();
+            }
+        }
+    }
+    else
+    {
+        for k in 0..((&random_keys[i-1].0 - &random_keys[i].0)+1) {
+
+            if let Some(a) = grid_map.get_mut(&(&random_keys[i as usize]))
+            {
+                let b = Rect::new(a.rect.x + ( a.rect.w * k),a.rect.y,a.rect.width(),a.rect.height());
+
+                let tile_key = (b.x / 100,b.y/100);
+
+                if let Some(path_tile) = grid_map.get_mut(&tile_key)
+                {
+                    path_tile.occupied = true;
+                }
+                
+                *random_tile_x = k;
+
+                tile_path.push((b.x,b.y));
+
+                canvas.copy(&road_texture, road_rect, b).unwrap();
+                // canvas.set_draw_color(Color::RED);
+                // canvas.fill_rect(b).unwrap();
+            }
+        }
     }
 
-    Ok(())
-    // ...
+
+    if &random_keys[i-1].1 - &random_keys[i].1 < 0 {
+        for k in (0..=(&random_keys[i-1].1 - &random_keys[i].1).abs()).rev() {
+
+            if let Some(a) = grid_map.get_mut(&(&random_keys[i as usize]))
+            {
+                let b = Rect::new(a.rect.x + ( a.rect.w * *random_tile_x),a.rect.y + ( a.rect.h * -k),a.rect.width(),a.rect.height());
+
+                let tile_key = (b.x / 100,b.y/100);
+
+                if let Some(path_tile) = grid_map.get_mut(&tile_key)
+                {
+                    path_tile.occupied = true;
+                }
+
+                tile_path.push((b.x,b.y));
+
+                canvas.copy(&road_texture, road_rect, b).unwrap();
+                // canvas.set_draw_color(Color::RED);
+                // canvas.fill_rect(b).unwrap();
+            }
+        }
+    }
+    else
+    {
+        for k in 0..((&random_keys[i-1].1 - &random_keys[i].1)+1) {
+
+            if let Some(a) = grid_map.get_mut(&(&random_keys[i as usize]))
+            {
+                let b = Rect::new(a.rect.x + ( a.rect.w * *random_tile_x),a.rect.y + ( a.rect.h * k),a.rect.width(),a.rect.height());    
+
+                let tile_key = (b.x / 100,b.y/100);
+
+                if let Some(path_tile) = grid_map.get_mut(&tile_key)
+                {
+                    path_tile.occupied = true;
+                }         
+                tile_path.push((b.x,b.y));
+                canvas.copy(&road_texture, road_rect, b).unwrap();
+
+                // canvas.set_draw_color(Color::RED);
+                // canvas.fill_rect(b).unwrap();
+            }
+        }
+    }
+
+
+    path_collection.push(tile_path);
+
+
+}
+
+fn check_and_update_key(grid_map: &HashMap<(i32, i32), Tile>, key: &mut (i32, i32), offset: (i32, i32)) -> bool {
+    if let Some(a) = grid_map.get(&(key.0 + offset.0, key.1 + offset.1)) {
+        if a.occupied {
+            *key = (
+                rand::thread_rng().gen_range(0..15),
+                rand::thread_rng().gen_range(0..8),
+            );
+            return true;
+        }
+    }
+    false
 }
 
 fn check_player_input(player_input: &player_module::PlayerInput, a: &mut nalgebra::Matrix<f32, nalgebra::Const<2>, nalgebra::Const<1>, nalgebra::ArrayStorage<f32, 2, 1>>) {
@@ -392,8 +571,10 @@ fn create_player_images(players: &sdl2::render::Texture, img_hash: &mut HashMap<
     }
 }
 
-fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,tile_rect: &mut Rect) {
+fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, road_texture: &Texture) {
     
+    let road_rect = Rect::new(224,160,32,32);
+
     for tile in  _tile_map{
         if tile.1.highlight {
             canvas.set_draw_color(Color::RGB(0, 255, 0));
@@ -401,8 +582,11 @@ fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::ren
         }
 
         else if !tile.1.highlight {
-            canvas.set_draw_color(Color::RGB(255, 255, 255));
-            canvas.draw_rect(tile.1.rect).unwrap();  
+
+            canvas.copy(&road_texture, road_rect, tile.1.rect).unwrap();
+
+            //canvas.set_draw_color(Color::RGB(255, 255, 255));
+            //canvas.draw_rect(tile.1.rect).unwrap();  
         }
     }
 }
@@ -429,6 +613,7 @@ fn check_hash_tile(_tile_map: &mut HashMap<(i32,i32),Tile>,
 
                 if let Some(a) = &tile.1.furniture {
                     
+                    //TODO: for tile in (key)(height,width) -> return tiles there
                     for i  in -a.object_width+1 ..  a.object_width {
                         for j  in -a.object_height+1 ..  a.object_height {
                             keys_to_modify.push((key.0+i,key.1+j));
@@ -470,8 +655,6 @@ fn check_hash_tile(_tile_map: &mut HashMap<(i32,i32),Tile>,
 
 
 }
-
-
 
 fn create_hash_grid(rows: &i32, columns: &i32, _tile_map: &mut HashMap<(i32,i32),Tile>) {
     for i in 0..(rows * columns) {
