@@ -1,4 +1,4 @@
-use std::{mem::size_of, fmt::Debug};
+use std::{mem::{size_of, size_of_val}, fmt::Debug};
 
 use crate::constvalues::BUF_SIZE;
 
@@ -39,7 +39,7 @@ impl Stream {
             // let data_ptr = self.data.as_mut_ptr().add(self.index);
             // let val_ptr = &val as *const T as *const u8;
             // std::ptr::copy_nonoverlapping(val_ptr, data_ptr, size_of::<T>());
-            self.index += 1;
+            self.index += size_of::<T>();
         }
     }
     
@@ -52,7 +52,7 @@ impl Stream {
             // self.size += 1;
             // val
             let x = &*((self.data.as_mut_ptr().add(self.size)) as *mut T);
-            self.size += 1;
+            self.size += size_of::<T>();
             x
         }
     }

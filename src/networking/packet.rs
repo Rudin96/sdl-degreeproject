@@ -24,8 +24,8 @@ impl Default for WorldPacket {
         Self { pos: HashMap::new() }
     }
 }
-impl Default for ConnectionPacket {
-    fn default() -> Self {
-        Self { i: 0, status: ConnectionState::DISCONNECTED }
+impl ConnectionPacket {
+    pub fn new() -> Self {
+        Self { i: 0, status: ConnectionState::CONNECTING }
     }
 }

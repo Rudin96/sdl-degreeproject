@@ -33,7 +33,7 @@ impl Client {
     
     fn sendconnectionrequest(&mut self) {
         //TODO send a connectrequest packet to server
-        let mut connpacket = ConnectionPacket::default();
+        let mut connpacket = ConnectionPacket::new();
         connpacket.status = ConnectionState::CONNECTING;
         let mut stream = Stream::new();
         stream.write(connpacket);
