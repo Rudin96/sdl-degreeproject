@@ -40,7 +40,7 @@ impl Client {
         self.commitdata(&mut stream);
         let mut buf = vec![0; BUF_SIZE];
         self.socket.recv(&mut buf).unwrap();
-        let connpacket = stream.readfrombuffer::<ConnectionPacket>(&buf[..]);
+        let connpacket = Stream::readfrombuffer::<ConnectionPacket>(buf.as_mut_slice());
         println!("CLIENT: Received connection packet: {:?}", connpacket);
         self.connstate = connpacket.status;
         self.recieve();
@@ -59,9 +59,12 @@ impl Client {
         println!("Client: Starting receive thread");
         thread::spawn(move || {
             loop {
+                let mut stream = Stream::new();
                 let mut buf = vec![0; BUF_SIZE];
-                println!("CLIENT: RECEIVING DATA FROM SERVER");
                 selfsocket.recv_from(&mut buf).expect("Client recieve error");
+                stream.writetobuffer(buf.as_mut_slice());
+                let wp = stream.read::<WorldPacket>();
+                println!("CLIENT: Stream data {:?}", wp);
                 bufsender.send(buf).unwrap();
             }
         });
@@ -76,8 +79,7 @@ impl Client {
             let mut stream = Stream::new();
             match self.buffer.1.try_recv() {
                 Ok(incbuf) => {
-                    let worldpacket = stream.readfrombuffer::<WorldPacket>(&incbuf);
-                    println!("CLIENT: Received Worldpacket {:?} from server", worldpacket);
+
                 },
                 Err(e) => {
                     self.connstate = ConnectionState::DISCONNECTED;
@@ -91,6 +93,7 @@ impl Client {
     pub fn connect(&mut self, ipaddress: String) {
         self.ipaddress = ipaddress.clone();
         self.ipaddress.push_str(&format!(":{PORT_NUMBER}"));
+        self.socket.connect(&self.ipaddress).unwrap();
         self.sendconnectionrequest();
     }
 }

@@ -36,9 +36,6 @@ impl Stream {
     {
         unsafe {
             *((self.data.as_mut_ptr().add(self.index)) as *mut T) = val;
-            // let data_ptr = self.data.as_mut_ptr().add(self.index);
-            // let val_ptr = &val as *const T as *const u8;
-            // std::ptr::copy_nonoverlapping(val_ptr, data_ptr, size_of::<T>());
             self.index += size_of::<T>();
         }
     }
@@ -46,20 +43,15 @@ impl Stream {
     pub fn read<T>(&mut self) -> &T
     {
         unsafe {
-            // let data_ptr = self.data.as_mut_ptr().add(self.size);
-            // let val: &T = &*(data_ptr as *mut T);
-            // println!("READER: val ref is: {:#?}", val);
-            // self.size += 1;
-            // val
             let x = &*((self.data.as_mut_ptr().add(self.size)) as *mut T);
             self.size += size_of::<T>();
             x
         }
     }
-
-    pub fn readfrombuffer<T>(&mut self, buf: &[u8]) -> &T {
+    
+    pub fn readfrombuffer<T>(buf: &[u8]) -> &T {
         unsafe {
-            &*(buf.as_ptr() as *const T)
+            &*(buf.as_ptr() as *mut T)
         }
     }
 }

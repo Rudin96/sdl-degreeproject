@@ -26,12 +26,14 @@ impl Server {
                 let mut buf = vec![0; BUF_SIZE];
                 match socketclone.recv_from(&mut buf) {
                     Ok(d) => {
-                        let mut connpacket = stream.readfrombuffer::<ConnectionPacket>(&buf[..d.0]).clone();
+                        let mut connpacket = Stream::readfrombuffer::<ConnectionPacket>(&buf).clone();
                         conclientssender.send((d.1, clindex)).unwrap();
                         connpacket.i = clindex;
                         connpacket.status = ConnectionState::CONNECTED;
+                        let conpacketclone = connpacket.clone();
                         stream.write(connpacket);
-                        Self::send(&socketclone, &stream, &d.1);
+                        println!("SERVER: Sending connection data to clients: {:?}", conpacketclone);
+                        Self::send(&socketclone, &stream.getbuffer(), &d.1);
                         clindex += 1;
                     },
                     Err(d) => {
@@ -61,25 +63,28 @@ impl Server {
         }
     }
     
-    fn senddatatoclients(&self) {
+    fn senddatatoclients(&mut self) {
         for c in self.connectedclients.iter() {
             let mut stream = Stream::new();
-            stream.write(&self.worldpacket);
-            Self::send(&self.socket, &mut stream, c.0);
-            println!("SERVER: Sending world state to {}", c.0);
+            let worldpacketclone = self.worldpacket.clone();
+            stream.write(worldpacketclone);
+            let data = &*stream.getbuffer();
+            // println!("SERVER: Sending data with length: {:?}", Stream::readfrombuffer::<WorldPacket>(data));
+            // println!("SERVER: Sending data: {:?}", data);
+            Self::send(&self.socket, data, c.0);
         }
     }
     
-    fn send(socket: &UdpSocket, stream: &Stream, to: &SocketAddr) {
-        // println!("SERVER: Sending wpacket: {:?}", &stream.read::<WorldPacket>());
-        socket.send_to(&stream.getbuffer(), to).unwrap();
+    fn send(socket: &UdpSocket, data: &[u8], to: &SocketAddr) {
+        // println!("SERVER: Sending world state {:?} to {}", Stream::readfrombuffer::<WorldPacket>(data), to);
+        socket.send_to(data, to).unwrap();
     }
 
     fn new() -> Server {
         Server { connectedclientssender: channel(),
                 socket: UdpSocket::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, PORT_NUMBER))).expect("Couldnt bind socket"),
                 connectedclients: HashMap::new(),
-                worldpacket: WorldPacket::default()
+                worldpacket: WorldPacket::new()
             }
     }
 }
