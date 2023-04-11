@@ -63,7 +63,8 @@ impl Client {
                 let mut buf = vec![0; BUF_SIZE];
                 selfsocket.recv_from(&mut buf).expect("Client recieve error");
                 stream.writetobuffer(buf.as_mut_slice());
-                let wp = stream.read::<WorldPacket>();
+                let mut wp = WorldPacket::new();
+                wp = stream.read::<WorldPacket>().clone();
                 println!("CLIENT: Stream data {:?}", wp);
                 bufsender.send(buf).unwrap();
             }

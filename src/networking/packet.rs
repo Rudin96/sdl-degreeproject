@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
+
+use crate::constvalues::MAX_PLAYERS;
 
 use super::client::ConnectionState;
 
@@ -22,4 +24,18 @@ impl ConnectionPacket {
     pub fn new() -> Self {
         Self { i: 0, status: ConnectionState::DISCONNECTED }
     }
+}
+
+impl Serialize for WorldPacket {
+    fn to_bytes (&self) -> &[u8] {
+        todo!()
+    }
+}
+
+pub trait Serialize {
+    fn to_bytes (&self) -> &[u8];
+}
+
+pub trait Deserialize {
+    fn into<T>(data: &[u8]) -> T;
 }

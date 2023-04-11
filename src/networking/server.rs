@@ -66,7 +66,7 @@ impl Server {
     fn senddatatoclients(&mut self) {
         for c in self.connectedclients.iter() {
             let mut stream = Stream::new();
-            let worldpacketclone = self.worldpacket.clone();
+            let worldpacketclone = self.worldpacket.pos.clone();
             stream.write(worldpacketclone);
             let data = &*stream.getbuffer();
             // println!("SERVER: Sending data with length: {:?}", Stream::readfrombuffer::<WorldPacket>(data));
