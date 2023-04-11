@@ -310,10 +310,22 @@ pub(crate) fn run() -> Result<(), String> {
         }
 
 
-
+        //TODO::Fix here something something sending the road id to the server etc mayb perhaps?
         for i in 1..random_keys.len() {
-            let mut random_tile_x= 0;
+            let mut random_tile_x = 0;
             draw_paths(&mut tile_paths,&random_keys, i, &mut grid_map, &mut random_tile_x, &mut canvas,&asset_pack);
+        }
+
+
+        for i in &tile_paths {
+            for j in i{
+                if let Some(tile) = grid_map.get_mut(&(j.0,j.1)) {
+                    match &tile.furniture {
+                        Some(furniture) => canvas.copy(&asset_pack,furniture.sprite,furniture.rect).unwrap(),
+                        _ => () 
+                        }
+                }
+            }
         }
 
         for i in 0..random_keys.len()  {
@@ -344,7 +356,8 @@ pub(crate) fn run() -> Result<(), String> {
                     Some(furniture) => canvas.copy(&asset_pack,furniture.sprite,furniture.rect).unwrap(),
                      _ => () 
                 }
-            } 
+            }
+             
         }
         
         canvas.present();
@@ -417,7 +430,11 @@ fn draw_paths(
 
                 if let Some(path_tile) = grid_map.get_mut(&tile_key)
                 {
-                    path_tile.occupied = true;
+                    if path_tile.occupied == false {
+                        
+                        path_tile.occupied = true;
+                        allocate_object(path_tile,2);
+                    }
                 }
 
                 tile_path.push((b.x,b.y));
@@ -441,7 +458,11 @@ fn draw_paths(
 
                 if let Some(path_tile) = grid_map.get_mut(&tile_key)
                 {
-                    path_tile.occupied = true;
+                    if path_tile.occupied == false {
+                        
+                        path_tile.occupied = true;
+                        allocate_object(path_tile,2);
+                    }
                 }
                 
                 *random_tile_x = k;
@@ -467,12 +488,16 @@ fn draw_paths(
 
                 if let Some(path_tile) = grid_map.get_mut(&tile_key)
                 {
-                    path_tile.occupied = true;
+                    if path_tile.occupied == false {
+                        
+                        path_tile.occupied = true;
+                        allocate_object(path_tile,2);
+                    }
                 }
 
                 tile_path.push((b.x,b.y));
 
-                canvas.copy(&road_texture, road_rect, b).unwrap();
+                 canvas.copy(&road_texture, road_rect, b).unwrap();
                 // canvas.set_draw_color(Color::RED);
                 // canvas.fill_rect(b).unwrap();
             }
@@ -490,7 +515,11 @@ fn draw_paths(
 
                 if let Some(path_tile) = grid_map.get_mut(&tile_key)
                 {
-                    path_tile.occupied = true;
+                    if path_tile.occupied == false {
+                        
+                        path_tile.occupied = true;
+                        allocate_object(path_tile,2);
+                    }
                 }         
                 tile_path.push((b.x,b.y));
                 canvas.copy(&road_texture, road_rect, b).unwrap();
@@ -571,7 +600,7 @@ fn create_player_images(players: &sdl2::render::Texture, img_hash: &mut HashMap<
     }
 }
 
-fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, road_texture: &Texture) {
+fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::render::Canvas<sdl2::video::Window>, grass_texture: &Texture) {
     
     let road_rect = Rect::new(224,160,32,32);
 
@@ -583,7 +612,7 @@ fn draw_tile_grid(_tile_map: &mut HashMap<(i32,i32),Tile>,canvas: &mut sdl2::ren
 
         else if !tile.1.highlight {
 
-            canvas.copy(&road_texture, road_rect, tile.1.rect).unwrap();
+            canvas.copy(&grass_texture, road_rect, tile.1.rect).unwrap();
 
             //canvas.set_draw_color(Color::RGB(255, 255, 255));
             //canvas.draw_rect(tile.1.rect).unwrap();  
