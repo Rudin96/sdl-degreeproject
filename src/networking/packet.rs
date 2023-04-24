@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::{collections::HashMap, mem::size_of};
 
 use crate::constvalues::MAX_PLAYERS;
 
@@ -28,7 +28,16 @@ impl ConnectionPacket {
 
 impl Serialize for WorldPacket {
     fn to_bytes (&self) -> &[u8] {
-        todo!()
+        
+    }
+}
+
+impl Deserialize for WorldPacket {
+    fn into<T: Clone>(data: &[u8]) -> T {
+        unsafe {
+            let x = &*(data.as_mut_ptr().add(size_of::<T>()) as *mut T);
+            x.clone()
+        }
     }
 }
 
@@ -37,5 +46,5 @@ pub trait Serialize {
 }
 
 pub trait Deserialize {
-    fn into<T>(data: &[u8]) -> T;
+    fn into<T: Clone>(data: &[u8]) -> T;
 }
